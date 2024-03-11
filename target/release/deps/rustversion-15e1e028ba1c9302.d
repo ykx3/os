@@ -1,0 +1,20 @@
+/data/rustos/os/target/release/deps/librustversion-15e1e028ba1c9302.so: /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/lib.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/attr.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/bound.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/constfn.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/date.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/error.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/expand.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/expr.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/iter.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/release.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/time.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/token.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/version.rs /data/rustos/os/target/release/build/rustversion-6423fa069e013c60/out/version.expr
+
+/data/rustos/os/target/release/deps/rustversion-15e1e028ba1c9302.d: /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/lib.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/attr.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/bound.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/constfn.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/date.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/error.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/expand.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/expr.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/iter.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/release.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/time.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/token.rs /home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/version.rs /data/rustos/os/target/release/build/rustversion-6423fa069e013c60/out/version.expr
+
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/lib.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/attr.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/bound.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/constfn.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/date.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/error.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/expand.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/expr.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/iter.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/release.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/time.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/token.rs:
+/home/os/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rustversion-1.0.14/src/version.rs:
+/data/rustos/os/target/release/build/rustversion-6423fa069e013c60/out/version.expr:
+
+# env-dep:OUT_DIR=/data/rustos/os/target/release/build/rustversion-6423fa069e013c60/out
