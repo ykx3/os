@@ -29,7 +29,7 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
     // 1. Load config
     let config = {
         let mut file = open_file(bs, CONFIG_PATH);
-        let buf=load_file(bs, file);
+        let buf=load_file(bs, &mut file);
         config::Config::parse(buf)
     };
 
@@ -38,8 +38,8 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
     // 2. Load ELF files
     let elf = {
         let mut file = open_file(bs, config.kernel_path);
-        let buf = load_file(bs, file);
-        ElfFile::new(&buf).expect("Failed to load elf")
+        let buf = load_file(bs, &mut file);
+        xmas_elf::ElfFile::new(buf).expect("Failed to load elf")
     };
 
     unsafe {
@@ -76,7 +76,7 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
     let mut frame_allocator = UEFIFrameAllocator(bs);
     map_physical_memory(config.physical_memory_offset, max_phys_addr, &mut page_table, &mut frame_allocator);
     // FIXME: load and map the kernel elf file
-    load_elf(elf, config.physical_memory_offset, &mut page_table, &mut frame_allocator);
+    load_elf(&elf, config.physical_memory_offset, &mut page_table, &mut frame_allocator);
     // FIXME: map kernel stack
     if (config.kernel_stack_auto_grow == 0){
         elf::map_range(config.kernel_stack_address, config.kernel_stack_size * 4096, &mut page_table, &mut frame_allocator);
