@@ -45,45 +45,52 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
     unsafe {
         set_entry(elf.header.pt2.entry_point() as usize);
     }
-
+    // info!("2.finish");
     // 3. Load MemoryMap
     let max_mmap_size = system_table.boot_services().memory_map_size();
+    // info!("1");
     let mmap_storage = Box::leak(
         vec![0; max_mmap_size.map_size + 10 * max_mmap_size.entry_size].into_boxed_slice(),
     );
+    // info!("2");
     let mmap = system_table
         .boot_services()
         .memory_map(mmap_storage)
         .expect("Failed to get memory map");
-
+    // info!("3");
     let max_phys_addr = mmap
         .entries()
         .map(|m| m.phys_start + m.page_count * 0x1000)
         .max()
         .unwrap()
         .max(0x1_0000_0000); // include IOAPIC MMIO area
-
+    // info!("4");
     // 4. Map ELF segments, kernel stack and physical memory to virtual memory
     let mut page_table = current_page_table();
-
+    // info!("5");
     // FIXME: root page table is readonly, disable write protect (Cr0)
     unsafe {
         Cr0::update(|flags| {
             flags.remove(Cr0Flags::WRITE_PROTECT);
         });
     }
+    // info!("6");
     // FIXME: map physical memory to specific virtual address offset
     let mut frame_allocator = UEFIFrameAllocator(bs);
+    // info!("7");
     map_physical_memory(config.physical_memory_offset, max_phys_addr, &mut page_table, &mut frame_allocator);
     // FIXME: load and map the kernel elf file
+    // info!("8");
     load_elf(&elf, config.physical_memory_offset, &mut page_table, &mut frame_allocator);
     // FIXME: map kernel stack
+    // info!("9");
     if (config.kernel_stack_auto_grow == 0){
-        elf::map_range(config.kernel_stack_address, config.kernel_stack_size * 4096, &mut page_table, &mut frame_allocator);
+        elf::map_range(config.kernel_stack_address, config.kernel_stack_size , &mut page_table, &mut frame_allocator);
     }else{
         elf::map_range(config.kernel_stack_address, config.kernel_stack_auto_grow, &mut page_table, &mut frame_allocator);
     }
     // FIXME: recover write protect (Cr0)
+    // info!("10");
     unsafe {
         Cr0::update(|flags| {
             flags.insert(Cr0Flags::WRITE_PROTECT);
