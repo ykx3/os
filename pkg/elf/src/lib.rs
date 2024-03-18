@@ -137,6 +137,9 @@ fn load_segment(
     if !segment.flags().is_execute() {
         page_table_flags |= PageTableFlags::NO_EXECUTE;
     }
+    if segment.flags().is_read() {
+        page_table_flags |= PageTableFlags::USER_ACCESSIBLE;
+    }
     trace!("Segment page table flag: {:?}", page_table_flags);
 
     let start_page = Page::containing_address(virt_start_addr);
