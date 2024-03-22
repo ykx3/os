@@ -1,6 +1,24 @@
 use core::fmt;
 use x86_64::instructions::port::{PortReadOnly,PortWriteOnly};
+extern crate bitflags;
+use bitflags::bitflags;
 
+bitflags! {
+    pub struct LineControlRegister: u8 {
+        const DATA_BITS_5 = 0b00;
+        const DATA_BITS_6 = 0b01;
+        const DATA_BITS_7 = 0b10;
+        const DATA_BITS_8 = 0b11;
+        const STOP_BITS_1 = 0b0 << 2;
+        const STOP_BITS_2 = 0b1 << 2;
+        const PARITY_NONE = 0b0 << 3;
+        const PARITY_ODD = 0b1 << 3;
+        const PARITY_EVEN = 0b1 << 4;
+        const STICK_PARITY = 0b1 << 5;
+        const ENABLE_INTERRUPT = 0b1 << 6;
+        const DLAB = 0b1 << 7;
+    }
+}
 /// A port-mapped UART 16550 serial interface.
 pub struct SerialPort{
     base:u16,
@@ -21,14 +39,20 @@ impl SerialPort {
             data.read()
         }
     }
+    fn set_lcr(port: u16, flags: LineControlRegister) {
+        let mut lcr = PortWriteOnly::new(port + 3);
+        unsafe {
+            lcr.write(flags.bits());
+        }
+    }
     /// Initializes the serial port.
     pub fn init(&self) {
         // FIXME: Initialize the serial port
         SerialPort::outb(self.base + 1, 0x00);    // Disable all interrupts
-        SerialPort::outb(self.base + 3, 0x80);    // Enable DLAB (set baud rate divisor)
+        SerialPort::set_lcr(self.base, LineControlRegister::DLAB);    // Enable DLAB (set baud rate divisor)
         SerialPort::outb(self.base + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
         SerialPort::outb(self.base + 1, 0x00);    //                  (hi byte)
-        SerialPort::outb(self.base + 3, 0x03);    // 8 bits, no parity, one stop bit
+        SerialPort::set_lcr(self.base, LineControlRegister::DATA_BITS_8 | LineControlRegister::PARITY_NONE | LineControlRegister::STOP_BITS_1);    // 8 bits, no parity, one stop bit
         SerialPort::outb(self.base + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
         SerialPort::outb(self.base + 4, 0x0B);    // IRQs enabled, RTS/DSR set
         SerialPort::outb(self.base + 4, 0x1E);    // Set in loopback mode, test the serial chip
