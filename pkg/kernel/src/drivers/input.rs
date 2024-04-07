@@ -1,10 +1,10 @@
 use crossbeam_queue::ArrayQueue;
 use lazy_static::lazy_static;
-use spin::Mutex;
 use core::fmt::Write;
+use spin::Mutex;
 use alloc::string::String;
 
-type Key = u8;
+type Key = char; // 将 Key 类型从 u8 更改为 char
 
 lazy_static! {
     static ref INPUT_BUF: ArrayQueue<Key> = ArrayQueue::new(128);
@@ -35,19 +35,19 @@ pub fn get_line() -> String {
     loop {
         let key = pop_key();
         match key {
-            b'\r' => {
+            '\r' => {
                 println!(); // Print a new line on the screen
                 break;
             }
-            0x08 | 0x7F => { // Backspace or Delete
+            '\u{8}' | '\u{7f}' => { // Backspace or Delete
                 if !line.is_empty() {
                     line.pop();
                     print!("\x08 \x08"); // Move the cursor back, print a space, and move back again
                 }
             }
             _ => {
-                line.push(key as char);
-                print!("{}", key as char); // Print the character on the screen
+                line.push(key);
+                print!("{}", key); // Print the character on the screen
             }
         }
     }

@@ -1,8 +1,9 @@
 use super::consts::*;
 use x86_64::structures::idt::InterruptDescriptorTable;
-use crate::drivers;
-use crate::drivers::serial::get_serial;
+use crate::drivers::input::push_key;
+use crate::serial::get_serial;
 use x86_64::structures::idt::InterruptStackFrame;
+
 pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
     idt[Interrupts::IrqBase as u8 + Irq::Serial0 as u8]
         .set_handler_fn(serial_handler);
@@ -12,13 +13,25 @@ pub extern "x86-interrupt" fn serial_handler(_st: InterruptStackFrame) {
     receive();
     super::ack();
 }
-/// Receive character from uart 16550
-/// Should be called on every interrupt
+
 fn receive() {
-    // FIXME: receive character from uart 16550, put it into INPUT_BUFFER
-    // println!("keyboard interrupt");
     let mut serial_port = get_serial().expect("get serial failed");
+    let mut buffer = [0u8; 4];
+    let mut len = 0;
+
     while let Some(byte) = serial_port.receive() {
-        drivers::input::push_key(byte);
+        buffer[len] = byte;
+        len += 1;
+
+        if let Ok(s) = core::str::from_utf8(&buffer[..len]) {
+            if let Some(ch) = s.chars().next() {
+                push_key(ch);
+                len = 0; // Reset buffer after successfully decoding a character
+            }
+        }
+
+        if len == 4 {
+            len = 0; // Reset buffer if full but no valid character decoded
+        }
     }
 }
