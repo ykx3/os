@@ -1,85 +1,135 @@
+/// reference: https://docs.rs/uart_16550
+/// reference: http://byterunner.com/16550.html
+/// reference: http://www.larvierinehart.com/serial/serialadc/serial.htm
+/// reference: https://wiki.osdev.org/Serial_Ports
 use core::fmt;
-use x86_64::instructions::port::{PortReadOnly,PortWriteOnly};
-extern crate bitflags;
-use bitflags::bitflags;
+use x86_64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
+
+macro_rules! wait_for {
+    ($cond:expr) => {
+        while !$cond {
+            core::hint::spin_loop()
+        }
+    };
+}
 
 bitflags! {
-    pub struct LineControlRegister: u8 {
-        const DATA_BITS_5 = 0b00;
-        const DATA_BITS_6 = 0b01;
-        const DATA_BITS_7 = 0b10;
-        const DATA_BITS_8 = 0b11;
-        const STOP_BITS_1 = 0b0 << 2;
-        const STOP_BITS_2 = 0b1 << 2;
-        const PARITY_NONE = 0b0 << 3;
-        const PARITY_ODD = 0b1 << 3;
-        const PARITY_EVEN = 0b1 << 4;
-        const STICK_PARITY = 0b1 << 5;
-        const ENABLE_INTERRUPT = 0b1 << 6;
-        const DLAB = 0b1 << 7;
+    /// Line status flags
+    struct LineStsFlags: u8 {
+        const INPUT_FULL = 1;
+        // 1 to 4 unknown
+        const OUTPUT_EMPTY = 1 << 5;
+        // 6 and 7 unknown
     }
 }
-/// A port-mapped UART 16550 serial interface.
-pub struct SerialPort{
-    base:u16,
+
+/// A port-mapped UART.
+pub struct SerialPort {
+    /// - ransmit Holding Register (write)
+    /// - receive Holding Register (read)
+    data: Port<u8>,
+    /// Interrupt Enable Register
+    /// - bit 0: receive holding register interrupt
+    /// - bit 1: transmit holding register interrupt
+    /// - bit 2: receive line status interrupt
+    /// - bit 3: modem status interrupt
+    int_en: PortWriteOnly<u8>,
+    /// FIFO Control Register
+    fifo_ctrl: PortWriteOnly<u8>,
+    /// Line Control Register
+    line_ctrl: PortWriteOnly<u8>,
+    /// Modem Control Register
+    modem_ctrl: PortWriteOnly<u8>,
+    /// Line Status Register
+    line_sts: PortReadOnly<u8>,
 }
+
 impl SerialPort {
-    pub const fn new(port: u16) -> Self {
-        SerialPort { base: port }
-    }
-    fn outb(port: u16, data: u8){
-        let mut pipline = PortWriteOnly::new(port);
+    /// Creates a new serial port interface on the given I/O port.
+    ///
+    /// This function is unsafe because the caller must ensure that the given base address
+    /// really points to a serial port device.
+    pub const fn new(base: u16) -> Self {
         unsafe {
-            pipline.write(data);
+            Self {
+            data: Port::new(base),
+            int_en: PortWriteOnly::new(base + 1),
+            fifo_ctrl: PortWriteOnly::new(base + 2),
+            line_ctrl: PortWriteOnly::new(base + 3),
+            modem_ctrl: PortWriteOnly::new(base + 4),
+            line_sts: PortReadOnly::new(base + 5),
+            }
         }
     }
-    fn inb(port: u16)->u8{
-        let mut data = PortReadOnly::new(port);
-        unsafe{
-            data.read()
-        }
-    }
-    fn set_lcr(port: u16, flags: LineControlRegister) {
-        let mut lcr = PortWriteOnly::new(port + 3);
-        unsafe {
-            lcr.write(flags.bits());
-        }
-    }
+
     /// Initializes the serial port.
-    pub fn init(&self) {
-        // FIXME: Initialize the serial port
-        SerialPort::outb(self.base + 1, 0x00);    // Disable all interrupts
-        SerialPort::set_lcr(self.base, LineControlRegister::DLAB);    // Enable DLAB (set baud rate divisor)
-        SerialPort::outb(self.base + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-        SerialPort::outb(self.base + 1, 0x00);    //                  (hi byte)
-        SerialPort::set_lcr(self.base, LineControlRegister::DATA_BITS_8 | LineControlRegister::PARITY_NONE | LineControlRegister::STOP_BITS_1);    // 8 bits, no parity, one stop bit
-        SerialPort::outb(self.base + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
-        SerialPort::outb(self.base + 4, 0x0B);    // IRQs enabled, RTS/DSR set
-        SerialPort::outb(self.base + 4, 0x1E);    // Set in loopback mode, test the serial chip
-     
-        // If serial is not faulty set it in normal operation mode
-        // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
-        SerialPort::outb(self.base + 4, 0x0F);
+    ///
+    /// The default configuration of [38400/8-N-1](https://en.wikipedia.org/wiki/8-N-1) is used.
+    pub fn init(&mut self) {
+        unsafe {
+            // Disable interrupts
+            self.int_en.write(0x00);
+
+            // Enable DLAB
+            self.line_ctrl.write(0x80);
+
+            // Set maximum speed to 38400 bps by configuring DLL and DLM
+            // > LSB of Divisor Latch when Enabled
+            self.data.write(0b00000011);
+            // > MSB of Divisor Latch when Enabled
+            self.int_en.write(0b00000000);
+
+            // Disable DLAB and set data word length to 8 bits
+            self.line_ctrl.write(0b00000011);
+
+            // Enable FIFO, clear TX/RX queues and
+            // set interrupt watermark at 1 bytes
+            self.fifo_ctrl.write(0b00000111);
+
+            // Mark data terminal ready, signal request to send
+            // and enable auxiliary output #2 (used as interrupt line for CPU)
+            self.modem_ctrl.write(0b00001011);
+
+            // Enable interrupts
+            self.int_en.write(0b00000001);
+        }
     }
-    fn is_transmit_empty(&self)->bool {
-        SerialPort::inb(self.base + 5) & 0x20 != 0
+
+    fn line_sts(&mut self) -> LineStsFlags {
+        unsafe { LineStsFlags::from_bits_truncate(self.line_sts.read()) }
     }
+
     /// Sends a byte on the serial port.
     pub fn send(&mut self, data: u8) {
-        // FIXME: Send a byte on the serial port
-        while (self.is_transmit_empty() == false){}
-        SerialPort::outb(self.base,data);
+        match data {
+            8 | 0x7F => {
+                self.send_raw(0x08);
+                self.send_raw(0x20);
+                self.send_raw(0x08);
+            }
+            _ => {
+                self.send_raw(data);
+            }
+        }
     }
 
-    fn serial_received(&self)->bool {
-        SerialPort::inb(self.base + 5) & 1 != 0
+    /// Sends a raw byte on the serial port, intended for binary data.
+    pub fn send_raw(&mut self, data: u8) {
+        unsafe {
+            wait_for!(self.line_sts().contains(LineStsFlags::OUTPUT_EMPTY));
+            self.data.write(data);
+        }
     }
+
     /// Receives a byte on the serial port no wait.
     pub fn receive(&mut self) -> Option<u8> {
-        // FIXME: Receive a byte on the serial port no wait
-        while (self.serial_received() == false){}
-
-        Some(SerialPort::inb(self.base))
+        unsafe {
+            if self.line_sts().contains(LineStsFlags::INPUT_FULL) {
+                Some(self.data.read())
+            } else {
+                None
+            }
+        }
     }
 }
 
