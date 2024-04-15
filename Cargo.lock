@@ -280,6 +280,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "442887c63f2c839b346c192d047a7c87e73d0689c9157b00b53dcc27dd5ea793"
 
 [[package]]
+name = "volatile"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b214e6480cbaa16049d2f256268b51732a8d1e5507ac56392990604c7c71d936"
+
+[[package]]
 name = "x86"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -299,7 +305,7 @@ dependencies = [
  "bit_field",
  "bitflags 2.5.0",
  "rustversion",
- "volatile",
+ "volatile 0.4.6",
 ]
 
 [[package]]
@@ -311,7 +317,7 @@ dependencies = [
  "bit_field",
  "bitflags 2.5.0",
  "rustversion",
- "volatile",
+ "volatile 0.4.6",
 ]
 
 [[package]]
@@ -347,7 +353,7 @@ dependencies = [
 
 [[package]]
 name = "ysos_kernel"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bit_field",
  "bitflags 2.5.0",
@@ -358,6 +364,7 @@ dependencies = [
  "log",
  "paste",
  "spin 0.9.8",
+ "volatile 0.5.2",
  "x86",
  "x86_64 0.15.1",
  "ysos_boot",
