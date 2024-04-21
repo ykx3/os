@@ -11,7 +11,7 @@ pub fn test() -> ! {
         count += 1;
         if count == 1000 {
             count = 0;
-            print!("\r{:-6} => Tick!", id);
+            print!("\r{:-6} => Tick!\n", id);
         }
         unsafe {
             x86_64::instructions::hlt();

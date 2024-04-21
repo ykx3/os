@@ -14,14 +14,13 @@ pub fn kernel_main(boot_info: &'static boot::BootInfo) -> ! {
     // FIXME: update lib.rs to pass following tests
 
     // 1. run some (about 5) "test", show these threads are running concurrently
-
+    
     // 2. run "stack", create a huge stack, handle page fault properly
 
     let mut test_num = 0;
 
     loop {
         print!("[>] ");
-        print_process_list();
         let line = input::get_line();
         match line.trim() {
             "exit" => break,

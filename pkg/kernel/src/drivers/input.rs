@@ -24,19 +24,15 @@ pub fn try_pop_key() -> Option<Key> {
 
 pub fn pop_key() -> Key {
     loop {
-        print!("pop_key");
         if let Some(key) = try_pop_key() {
-            panic!("get key");
             return key;
         }
-        return 'a';
     }
 }
 
 pub fn get_line() -> String {
     let mut line = String::with_capacity(128);
     loop {
-        info!("get_line");
         let key = pop_key();
         match key {
             '\r' => {

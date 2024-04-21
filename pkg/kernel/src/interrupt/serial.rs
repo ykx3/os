@@ -10,7 +10,7 @@ pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
 }
 
 pub extern "x86-interrupt" fn serial_handler(_st: InterruptStackFrame) {
-    info!("keyboard interrupt");
+    // info!("keyboard interrupt");
     receive();
     super::ack();
 }

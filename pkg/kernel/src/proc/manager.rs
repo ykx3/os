@@ -78,12 +78,12 @@ impl ProcessManager {
         let now = self.current();
         let mut inner = now.write();
         if inner.status() != ProgramStatus::Dead {
-            inner.save(& context);
             inner.tick();
+            inner.save(& context);
             inner.pause();
             self.push_ready(now.pid());
         }
-        info!("saved {}",now.pid().0)   
+        // info!("saved {}",now.pid().0)   
     }
 
     pub fn switch_next(&self, context: &mut ProcessContext) -> ProcessId {
@@ -107,7 +107,7 @@ impl ProcessManager {
                 new_inner.resume();
                 new_inner.restore(context);
                 set_pid(new.pid());
-                info!("switch to {}",new.pid().0);
+                // info!("switch to {}",new.pid().0);
                 return new.pid();
             }
         }
@@ -120,6 +120,7 @@ impl ProcessManager {
         name: String,
         proc_data: Option<ProcessData>,
     ) -> ProcessId {
+        // info!("spawn");
         let kproc = self.get_proc(&KERNEL_PID).unwrap();
         let page_table = kproc.read().clone_page_table();
         let proc = Process::new(name, Some(Arc::downgrade(&kproc)), page_table, proc_data);
@@ -150,9 +151,9 @@ impl ProcessManager {
         let now = self.current();
         let pid = now.pid().0 as u64;
         let stack_bot = VirtAddr::new(STACK_MAX - pid * STACK_MAX_SIZE);
-        let stack_top = stack_bot + STACK_DEF_SIZE-8;
-        if addr > stack_bot && addr < stack_top{
-            if let Ok(_) = now.allocate_stack(stack_top, addr){
+        let stack_top = stack_bot - STACK_MAX_SIZE ;
+        if addr < stack_bot && addr > stack_top{
+            if let Ok(_) = now.allocate_stack(stack_bot, addr){
                 return true;
             }
         }

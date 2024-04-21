@@ -72,6 +72,7 @@ pub fn init() {
 pub fn switch(context: &mut ProcessContext) {
     x86_64::instructions::interrupts::without_interrupts(|| {
         // FIXME: switch to the next process
+        // info!("in switch");
         let manager = get_process_manager();
         manager.save_current(context);
         manager.switch_next(context);
@@ -80,6 +81,7 @@ pub fn switch(context: &mut ProcessContext) {
 
 pub fn spawn_kernel_thread(entry: fn() -> !, name: String, data: Option<ProcessData>) -> ProcessId {
     x86_64::instructions::interrupts::without_interrupts(|| {
+        // info!("spawn");
         let entry = VirtAddr::new(entry as usize as u64);
         get_process_manager().spawn_kernel_thread(entry, name, data)
     })
@@ -87,6 +89,7 @@ pub fn spawn_kernel_thread(entry: fn() -> !, name: String, data: Option<ProcessD
 
 pub fn print_process_list() {
     x86_64::instructions::interrupts::without_interrupts(|| {
+        // info!("list");
         get_process_manager().print_process_list();
     })
 }
@@ -94,12 +97,14 @@ pub fn print_process_list() {
 pub fn env(key: &str) -> Option<String> {
     x86_64::instructions::interrupts::without_interrupts(|| {
         // FIXME: get current process's environment variable
+        // info!("env");
         get_process_manager().current().read().env(key)
     })
 }
 
 pub fn process_exit(ret: isize) -> ! {
     x86_64::instructions::interrupts::without_interrupts(|| {
+        // info!("exit");
         get_process_manager().kill_current(ret);
     });
 
@@ -110,6 +115,7 @@ pub fn process_exit(ret: isize) -> ! {
 
 pub fn handle_page_fault(addr: VirtAddr, err_code: PageFaultErrorCode) -> bool {
     x86_64::instructions::interrupts::without_interrupts(|| {
+        // info!("page");
         get_process_manager().handle_page_fault(addr, err_code)
     })
 }

@@ -98,11 +98,11 @@ impl Process {
         VirtAddr::new(stack_base+STACK_DEF_SIZE-8)
     }
 
-    pub fn allocate_stack(&self, stack_top:VirtAddr, addr:VirtAddr) -> Result<(),()>{
-        let pages = (stack_top - addr) / STACK_DEF_SIZE + 1;
+    pub fn allocate_stack(&self, stack_bot:VirtAddr, addr:VirtAddr) -> Result<(),()>{
+        let pages = (stack_bot - addr) / PAGE_SIZE + 1;
         let frame_allocator = &mut *get_frame_alloc_for_sure();
-        let mut page_table = self.inner.read().page_table.as_ref().unwrap().mapper();
-        map_range((stack_top - STACK_DEF_SIZE * pages).as_u64(), pages, &mut page_table, frame_allocator);
+        let mut page_table = self.read().page_table.as_ref().unwrap().mapper();
+        map_range((stack_bot - PAGE_SIZE * pages).as_u64(), pages, &mut page_table, frame_allocator);
         Ok(())
     }
 }
@@ -169,8 +169,8 @@ impl ProcessInner {
         drop(self.proc_data.take());
     }
 
-    pub fn init_stack(&mut self, bottom:VirtAddr, top:VirtAddr){
-        self.proc_data.as_mut().unwrap().set_stack(bottom, bottom - top);
+    pub fn init_stack(&mut self, entry:VirtAddr, top:VirtAddr){
+        self.context.init_stack_frame(entry, top);
     }
 }
 

@@ -6,7 +6,7 @@ pub fn init() {
     log::set_logger(&LOGGER).unwrap();
 
     // FIXME: Configure the logger
-    log::set_max_level(log::LevelFilter::Info);
+    log::set_max_level(log::LevelFilter::Trace);
 
     info!("Logger Initialized.");
 }
