@@ -1,11 +1,12 @@
 mod context;
 mod data;
-mod manager;
+pub mod manager;
 mod paging;
 mod pid;
 mod process;
 mod processor;
 
+use core::str::FromStr;
 use manager::*;
 use process::*;
 use crate::memory::PAGE_SIZE;
@@ -19,6 +20,7 @@ pub use pid::ProcessId;
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::VirtAddr;
 
+use self::processor::{get_pid, set_pid};
 // 0xffff_ff00_0000_0000 is the kernel's address space
 pub const STACK_MAX: u64 = 0x0000_4000_0000_0000;
 
@@ -34,7 +36,7 @@ pub const STACK_INIT_TOP: u64 = STACK_MAX - 8;
 // [bot..0xffffff0100000000..top..0xffffff01ffffffff]
 // kernel stack
 pub const KSTACK_MAX: u64 = 0xffff_ff02_0000_0000;
-pub const KSTACK_DEF_PAGE: u64 = /* FIXME: decide on the boot config */;
+pub const KSTACK_DEF_PAGE: u64 = 512 /* FIXME: decide on the boot config */;
 pub const KSTACK_DEF_SIZE: u64 = KSTACK_DEF_PAGE * PAGE_SIZE;
 pub const KSTACK_INIT_BOT: u64 = KSTACK_MAX - KSTACK_DEF_SIZE;
 pub const KSTACK_INIT_TOP: u64 = KSTACK_MAX - 8;
@@ -54,11 +56,14 @@ pub fn init() {
     let mut kproc_data = ProcessData::new();
 
     // FIXME: set the kernel stack
-
+    kproc_data.set_stack(VirtAddr::new(KSTACK_INIT_BOT), KSTACK_DEF_SIZE);
     trace!("Init process data: {:#?}", kproc_data);
 
     // kernel process
-    let kproc = { /* FIXME: create kernel process */ };
+    let kproc = { 
+        /* FIXME: create kernel process */ 
+        Process::new(String::from("kernel"), None, PageTableContext::new(), Some(kproc_data))
+    };
     manager::init(kproc);
 
     info!("Process Manager Initialized.");
@@ -67,6 +72,9 @@ pub fn init() {
 pub fn switch(context: &mut ProcessContext) {
     x86_64::instructions::interrupts::without_interrupts(|| {
         // FIXME: switch to the next process
+        let manager = get_process_manager();
+        manager.save_current(context);
+        manager.switch_next(context);
     });
 }
 
@@ -86,6 +94,7 @@ pub fn print_process_list() {
 pub fn env(key: &str) -> Option<String> {
     x86_64::instructions::interrupts::without_interrupts(|| {
         // FIXME: get current process's environment variable
+        get_process_manager().current().read().env(key)
     })
 }
 

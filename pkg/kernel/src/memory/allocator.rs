@@ -10,8 +10,8 @@ pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
 pub fn init() {
     // static buffer for kernel heap
     // will be allocated on the bss section when the kernel is load
+    info!("initing allocator");
     static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
-
     let heap_start = VirtAddr::from_ptr(unsafe { HEAP.as_ptr() });
     let heap_end = heap_start + HEAP_SIZE as u64;
 

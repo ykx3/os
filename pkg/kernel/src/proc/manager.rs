@@ -6,15 +6,16 @@ use crate::memory::{
 };
 use alloc::{collections::*, format};
 use spin::{Mutex, RwLock};
+use alloc::sync::Arc;
 
 pub static PROCESS_MANAGER: spin::Once<ProcessManager> = spin::Once::new();
 
 pub fn init(init: Arc<Process>) {
 
     // FIXME: set init process as Running
-
+    init.write().resume();
     // FIXME: set processor's current pid to init's pid
-
+    processor::set_pid(init.pid());
     PROCESS_MANAGER.call_once(|| ProcessManager::new(init));
 }
 
@@ -64,12 +65,25 @@ impl ProcessManager {
             .expect("No current process")
     }
 
+    pub fn check_proc(&self, pid:&ProcessId) -> Option<isize>{
+        self.get_proc(pid).unwrap().read().exit_code()
+    }
+
     pub fn save_current(&self, context: &ProcessContext) {
         // FIXME: update current process's tick count
 
         // FIXME: update current process's context
 
         // FIXME: push current process to ready queue if still alive
+        let now = self.current();
+        let mut inner = now.write();
+        if inner.status() != ProgramStatus::Dead {
+            inner.save(& context);
+            inner.tick();
+            inner.pause();
+            self.push_ready(now.pid());
+        }
+        info!("saved {}",now.pid().0)   
     }
 
     pub fn switch_next(&self, context: &mut ProcessContext) -> ProcessId {
@@ -84,6 +98,20 @@ impl ProcessManager {
         // FIXME: update processor's current pid
 
         // FIXME: return next process's pid
+        let mut ready = self.ready_queue.lock();
+        while !ready.is_empty(){
+            let pid = ready.pop_front().unwrap();
+            let new = self.get_proc(&pid).unwrap();
+            let mut new_inner = new.write();
+            if new_inner.is_ready() {
+                new_inner.resume();
+                new_inner.restore(context);
+                set_pid(new.pid());
+                info!("switch to {}",new.pid().0);
+                return new.pid();
+            }
+        }
+        panic!("no thread ready!")
     }
 
     pub fn spawn_kernel_thread(
@@ -100,12 +128,14 @@ impl ProcessManager {
         let stack_top = proc.alloc_init_stack();
 
         // FIXME: set the stack frame
-
+        proc.write().init_stack(entry, stack_top);
         // FIXME: add to process map
-
+        let pid = proc.pid();
+        self.processes.write().insert(pid, proc);
         // FIXME: push to ready queue
-
+        self.ready_queue.lock().push_back(pid);
         // FIXME: return new process pid
+        pid
     }
 
     pub fn kill_current(&self, ret: isize) {
@@ -114,7 +144,18 @@ impl ProcessManager {
 
     pub fn handle_page_fault(&self, addr: VirtAddr, err_code: PageFaultErrorCode) -> bool {
         // FIXME: handle page fault
-
+        if err_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION){
+            return false;
+        }
+        let now = self.current();
+        let pid = now.pid().0 as u64;
+        let stack_bot = VirtAddr::new(STACK_MAX - pid * STACK_MAX_SIZE);
+        let stack_top = stack_bot + STACK_DEF_SIZE-8;
+        if addr > stack_bot && addr < stack_top{
+            if let Ok(_) = now.allocate_stack(stack_top, addr){
+                return true;
+            }
+        }
         false
     }
 

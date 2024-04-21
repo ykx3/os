@@ -1,6 +1,6 @@
 use volatile::{access::ReadOnly, VolatileRef};
 use x86_64::{registers::rflags::RFlags, structures::idt::InterruptStackFrameValue, VirtAddr};
-
+use x86_64::structures::gdt::SegmentSelector;
 use crate::{memory::gdt::get_selector, RegistersValue};
 
 #[repr(C)]

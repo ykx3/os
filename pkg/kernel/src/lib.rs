@@ -31,13 +31,14 @@ pub mod interrupt;
 
 pub use alloc::format;
 use boot::BootInfo;
-
+pub mod proc;
 pub fn init(boot_info: &'static BootInfo) {
     serial::init(); // init serial output
     logger::init(); // init logger system
     memory::address::init(boot_info);
     memory::gdt::init(); // init gdt
     memory::allocator::init(); // init kernel heap allocator
+    proc::init();
     interrupt::init(); // init interrupts
     memory::init(boot_info); // init memory manager
 
@@ -57,3 +58,18 @@ pub fn shutdown(boot_info: &'static BootInfo) -> ! {
         );
     }
 }
+fn humanized_size(size: u64) -> (f64, &'static str) {
+    let mut num: f64 = size as f64;
+    let mut i = 0;
+    while num > 1024_f64 {
+    num /= 1024_f64;
+    i += 1;
+    }
+    match i {
+        0 => (num, "B"),
+        1 => (num, "KiB"),
+        2 => (num, "MiB"),
+        3 => (num, "GiB"),
+        _ => (num, "unknow")
+    }
+   }

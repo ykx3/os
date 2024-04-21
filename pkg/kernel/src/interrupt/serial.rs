@@ -10,6 +10,7 @@ pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
 }
 
 pub extern "x86-interrupt" fn serial_handler(_st: InterruptStackFrame) {
+    info!("keyboard interrupt");
     receive();
     super::ack();
 }
@@ -18,7 +19,7 @@ fn receive() {
     let mut serial_port = get_serial().expect("get serial failed");
     let mut buffer = [0u8; 4];
     let mut len = 0;
-
+    info!("receive");
     while let Some(byte) = serial_port.receive() {
         buffer[len] = byte;
         len += 1;

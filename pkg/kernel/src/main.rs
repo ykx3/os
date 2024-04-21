@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use ysos::*;
+use ysos::{proc::print_process_list, *};
 use ysos_kernel as ysos;
 
 extern crate alloc;
@@ -21,6 +21,7 @@ pub fn kernel_main(boot_info: &'static boot::BootInfo) -> ! {
 
     loop {
         print!("[>] ");
+        print_process_list();
         let line = input::get_line();
         match line.trim() {
             "exit" => break,

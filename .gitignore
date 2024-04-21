@@ -1,1 +1,6 @@
 target/
+.vscode/settings.json
+esp/KERNEL.ELF
+esp/EFI/BOOT/BOOTX64.EFI
+esp/KERNEL.ELF
+esp/EFI/BOOT/BOOTX64.EFI
