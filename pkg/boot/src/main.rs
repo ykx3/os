@@ -81,13 +81,13 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
     map_physical_memory(config.physical_memory_offset, max_phys_addr, &mut page_table, &mut frame_allocator);
     // FIXME: load and map the kernel elf file
     // info!("8");
-    load_elf(&elf, config.physical_memory_offset, &mut page_table, &mut frame_allocator);
+    load_elf(&elf, config.physical_memory_offset, &mut page_table, &mut frame_allocator, false);
     // FIXME: map kernel stack
     // info!("9");
-    if (config.kernel_stack_auto_grow == 0){
-        elf::map_range(config.kernel_stack_address, config.kernel_stack_size , &mut page_table, &mut frame_allocator);
+    if config.kernel_stack_auto_grow == 0{
+        elf::map_range(config.kernel_stack_address, config.kernel_stack_size , &mut page_table, &mut frame_allocator, None);
     }else{
-        elf::map_range(config.kernel_stack_address, config.kernel_stack_auto_grow, &mut page_table, &mut frame_allocator);
+        elf::map_range(config.kernel_stack_address, config.kernel_stack_auto_grow, &mut page_table, &mut frame_allocator, None);
     }
     // FIXME: recover write protect (Cr0)
     // info!("10");
@@ -98,6 +98,13 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
     }
     free_elf(bs, elf);
 
+    let apps = if config.load_apps {
+        info!("Loading apps...");
+        Some(load_apps(system_table.boot_services()))
+    } else {
+        info!("Skip loading apps");
+        None
+    };
     // 5. Exit boot and jump to ELF entry
     info!("Exiting boot services...");
 
@@ -109,6 +116,7 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
         memory_map: mmap.entries().copied().collect(),
         physical_memory_offset: config.physical_memory_offset,
         system_table: runtime,
+        loaded_apps: apps,
     };
 
     // align stack to 8 bytes

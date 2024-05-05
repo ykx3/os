@@ -1,5 +1,5 @@
 [package]
-name = "ysos_hello"
+name = "ysos_test"
 version = "0.1.0"
 edition = "2021"
 [workspace]

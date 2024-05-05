@@ -23,7 +23,7 @@ pub struct ProcessInner {
     status: ProgramStatus,
     exit_code: Option<isize>,
     context: ProcessContext,
-    page_table: Option<PageTableContext>,
+    pub(super) page_table: Option<PageTableContext>,
     proc_data: Option<ProcessData>,
 }
 
@@ -88,21 +88,35 @@ impl Process {
         inner.kill(ret);
     }
 
-    pub fn alloc_init_stack(&self) -> VirtAddr {
+    pub fn alloc_init_stack(&self, user_access: bool) -> VirtAddr {
         // FIXME: alloc init stack base on self pid
         let pid = self.pid.0;
         let stack_base = STACK_MAX - pid as u64 * STACK_MAX_SIZE;
+        // debug!("1");
         let frame_allocator = &mut *get_frame_alloc_for_sure();
-        let mut page_table = self.inner.read().page_table.as_ref().unwrap().mapper();
-        map_range(stack_base, STACK_DEF_PAGE, &mut page_table, frame_allocator);
+        // debug!("2");
+        let mut page_table = self.read().page_table.as_ref().unwrap().mapper();
+        // debug!("alloc init stack");
+        let flag = if user_access {
+            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE
+        }else{
+            PageTableFlags::empty()
+        };
+        map_range(stack_base, STACK_DEF_PAGE, &mut page_table, frame_allocator, Some(flag));
         VirtAddr::new(stack_base+STACK_DEF_SIZE-8)
     }
 
-    pub fn allocate_stack(&self, stack_bot:VirtAddr, addr:VirtAddr) -> Result<(),()>{
+    pub fn allocate_stack(&self, stack_bot:VirtAddr, addr:VirtAddr, user_access: bool) -> Result<(),()>{
         let pages = (stack_bot - addr) / PAGE_SIZE + 1;
+        // debug!("alloc stack");
+        let flag = if user_access {
+            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE
+        }else{
+            PageTableFlags::empty()
+        };
         let frame_allocator = &mut *get_frame_alloc_for_sure();
         let mut page_table = self.read().page_table.as_ref().unwrap().mapper();
-        map_range((stack_bot - PAGE_SIZE * pages).as_u64(), pages, &mut page_table, frame_allocator);
+        map_range((stack_bot - PAGE_SIZE * pages).as_u64(), pages, &mut page_table, frame_allocator, Some(flag));
         Ok(())
     }
 }

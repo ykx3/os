@@ -1,7 +1,5 @@
 use crossbeam_queue::ArrayQueue;
 use lazy_static::lazy_static;
-use core::fmt::Write;
-use spin::Mutex;
 use alloc::string::String;
 
 type Key = char; // 将 Key 类型从 u8 更改为 char

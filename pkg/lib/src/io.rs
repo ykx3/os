@@ -1,4 +1,5 @@
 use crate::*;
+use crate::syscall::*;
 use alloc::string::{String, ToString};
 use alloc::vec;
 
@@ -17,8 +18,36 @@ impl Stdin {
         //       - maybe char by char?
         // FIXME: handle backspace / enter...
         // FIXME: return string
-
-        String::new()
+        let mut line = String::with_capacity(128);
+        // print!("1");
+        let mut buf:[u8;1]=[0];
+        loop {
+            // print!("2");
+            let ret = sys_read(0,&mut buf);
+            if let Some(l) = ret {
+                if l == 0{
+                    continue;
+                }
+            }
+            let key = buf[0] as char;
+            match key {
+                '\r' => {
+                    println!(); // Print a new line on the screen
+                    break;
+                }
+                '\u{8}' | '\u{7f}' => { // Backspace or Delete
+                    if !line.is_empty() {
+                        line.pop();
+                        print!("\x08 \x08"); // Move the cursor back, print a space, and move back again
+                    }
+                }
+                _ => {
+                    line.push(key);
+                    print!("{}", key); // Print the character on the screen
+                }
+            }
+        }
+        line
     }
 }
 

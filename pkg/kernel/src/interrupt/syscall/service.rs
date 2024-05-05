@@ -1,5 +1,6 @@
 use core::alloc::Layout;
 
+use crate::proc;
 use crate::proc::*;
 use crate::utils::*;
 
@@ -12,8 +13,17 @@ pub fn spawn_process(args: &SyscallArgs) -> usize {
     // FIXME: spawn the process by name
     // FIXME: handle spawn error, return 0 if failed
     // FIXME: return pid as usize
-
-    0
+    let ptr = args.arg0 as *const u8;
+    let len = args.arg1 as usize;
+    unsafe{
+        let buf = core::slice::from_raw_parts(ptr, len);
+        let name = core::str::from_utf8_unchecked(&buf);
+        if let Some(pid) = spawn(name) {
+            pid.0 as usize
+        }else{
+            0
+        }
+    }
 }
 
 pub fn sys_write(args: &SyscallArgs) -> usize {
@@ -21,22 +31,35 @@ pub fn sys_write(args: &SyscallArgs) -> usize {
     //       - core::slice::from_raw_parts
     // FIXME: call proc::write -> isize
     // FIXME: return the result as usize
-
-    0
+    let fd = args.arg0 as u8;
+    let ptr = args.arg1 as *const u8;
+    let len = args.arg2 as usize;
+    unsafe{
+        let buf = core::slice::from_raw_parts(ptr, len);
+        proc::write(fd, buf) as usize
+    }
 }
 
 pub fn sys_read(args: &SyscallArgs) -> usize {
     // FIXME: just like sys_write
-
-    0
+    let fd = args.arg0 as u8;
+    let ptr = args.arg1 as *mut u8;
+    let len = args.arg2 as usize;
+    unsafe{
+        let mut buf = core::slice::from_raw_parts_mut(ptr, len);
+        proc::read(fd, &mut buf) as usize
+    }
 }
 
 pub fn exit_process(args: &SyscallArgs, context: &mut ProcessContext) {
     // FIXME: exit process with retcode
+    let ret = args.arg0 as isize;
+    exit(ret, context)
 }
 
 pub fn list_process() {
     // FIXME: list all processes
+    print_process_list();
 }
 
 pub fn sys_allocate(args: &SyscallArgs) -> usize {

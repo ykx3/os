@@ -1,4 +1,5 @@
 use crate::memory::*;
+use crate::proc::manager::get_process_manager;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::VirtAddr;
@@ -60,7 +61,7 @@ pub extern "x86-interrupt" fn page_fault_handler(
             stack_frame
         );
         // FIXME: print info about which process causes page fault?
-        panic!("Cannot handle page fault!");
+        panic!("Cannot handle page fault! Panic in {:#?}",get_process_manager().current().read().name());
     }
 }
 

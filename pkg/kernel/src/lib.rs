@@ -38,9 +38,10 @@ pub fn init(boot_info: &'static BootInfo) {
     memory::address::init(boot_info);
     memory::gdt::init(); // init gdt
     memory::allocator::init(); // init kernel heap allocator
-    proc::init();
+    proc::init(boot_info);
     interrupt::init(); // init interrupts
     memory::init(boot_info); // init memory manager
+    memory::user::init();
 
     x86_64::instructions::interrupts::enable();
     info!("Interrupts Enabled.");
@@ -73,3 +74,14 @@ fn humanized_size(size: u64) -> (f64, &'static str) {
         _ => (num, "unknow")
     }
    }
+
+pub fn wait(init: proc::ProcessId) {
+    loop {
+        if proc::still_alive(init) {
+            // Why? Check reflection question 5
+            x86_64::instructions::hlt();
+        } else {
+            break;
+        }
+    }
+}

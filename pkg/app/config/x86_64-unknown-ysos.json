@@ -13,6 +13,6 @@
   "features": "-mmx,-sse,+soft-float",
   "panic-strategy": "abort",
   "pre-link-args": {
-    "ld.lld": ["-Tpkg/app/config/app.ld"]
+    "ld.lld": ["-T/home/ykx/data/rustos/os/pkg/app/config/app.ld"]
   }
 }

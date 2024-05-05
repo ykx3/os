@@ -1,7 +1,7 @@
 use volatile::{access::ReadOnly, VolatileRef};
 use x86_64::{registers::rflags::RFlags, structures::idt::InterruptStackFrameValue, VirtAddr};
 use x86_64::structures::gdt::SegmentSelector;
-use crate::{memory::gdt::get_selector, RegistersValue};
+use crate::{memory::gdt::get_selector, memory::gdt::get_user_selector, RegistersValue};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -51,7 +51,10 @@ impl ProcessContext {
         let selector = get_selector();
         self.value.stack_frame.code_segment = selector.code_selector;
         self.value.stack_frame.stack_segment = selector.data_selector;
+        let selector = get_user_selector(); // FIXME: implement this function
 
+        self.value.stack_frame.code_segment = selector.user_code_selector;
+        self.value.stack_frame.stack_segment = selector.user_data_selector;
         trace!("Init stack frame: {:#?}", &self.stack_frame);
     }
 }

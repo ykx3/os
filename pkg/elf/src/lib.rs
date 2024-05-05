@@ -8,6 +8,7 @@ use core::ptr::{copy_nonoverlapping, write_bytes};
 use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::{mapper::*, *};
 use x86_64::{align_up, PhysAddr, VirtAddr};
+use xmas_elf::program::Flags;
 use xmas_elf::{program, ElfFile};
 
 /// Map physical memory
@@ -43,6 +44,7 @@ pub fn map_range(
     count: u64,
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+    flag:Option<PageTableFlags>,
 ) -> Result<PageRange, MapToError<Size4KiB>> {
     let range_start = Page::containing_address(VirtAddr::new(addr));
     let range_end = range_start + count;
@@ -52,10 +54,13 @@ pub fn map_range(
         Page::range(range_start, range_end),
         count
     );
-
-    // default flags for stack
-    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-
+    let mut flags: PageTableFlags = PageTableFlags::PRESENT;
+    if let Some(flag) = flag {
+        flags |= flag;
+    }else{
+        // default flags for stack
+        flags |= PageTableFlags::WRITABLE;
+    }
     for page in Page::range(range_start, range_end) {
         let frame = frame_allocator
             .allocate_frame()
@@ -87,6 +92,7 @@ pub fn load_elf(
     physical_offset: u64,
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+    user_access: bool,
 ) -> Result<(), MapToError<Size4KiB>> {
     let file_buf = elf.input.as_ptr();
 
@@ -96,13 +102,13 @@ pub fn load_elf(
         if segment.get_type().unwrap() != program::Type::Load {
             continue;
         }
-
         load_segment(
             file_buf,
             physical_offset,
             &segment,
             page_table,
             frame_allocator,
+            user_access,
         )?
     }
 
@@ -118,6 +124,7 @@ fn load_segment(
     segment: &program::ProgramHeader,
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+    user_access: bool,
 ) -> Result<(), MapToError<Size4KiB>> {
     trace!("Loading & mapping segment: {:#x?}", segment);
 
@@ -137,7 +144,7 @@ fn load_segment(
     if !segment.flags().is_execute() {
         page_table_flags |= PageTableFlags::NO_EXECUTE;
     }
-    if segment.flags().is_read() {
+    if user_access {
         page_table_flags |= PageTableFlags::USER_ACCESSIBLE;
     }
     trace!("Segment page table flag: {:?}", page_table_flags);

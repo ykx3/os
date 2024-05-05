@@ -25,6 +25,22 @@ pub use fs::*;
 #[macro_use]
 extern crate log;
 
+use arrayvec::ArrayString;
+use xmas_elf::ElfFile;
+
+const MAX_APP_NUMS: usize = 16;
+/// App information
+pub struct App {
+    /// The name of app
+    pub name: ArrayString<MAX_APP_NUMS>,
+    /// The ELF file
+    pub elf: ElfFile<'static>,
+}
+
+pub type AppList = ArrayVec<App, MAX_APP_NUMS>;
+
+pub type AppListRef = Option<&'static AppList>;
+
 pub type MemoryMap = ArrayVec<MemoryDescriptor, 256>;
 
 /// This structure represents the information that the bootloader passes to the kernel.
@@ -37,6 +53,9 @@ pub struct BootInfo {
 
     /// UEFI SystemTable
     pub system_table: SystemTable<Runtime>,
+
+    // Loaded apps
+    pub loaded_apps: Option<AppList>,
 }
 
 /// Get current page table from CR3
