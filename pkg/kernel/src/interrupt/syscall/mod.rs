@@ -1,4 +1,4 @@
-use crate::{memory::gdt, proc::*, wait};
+use crate::{clock::get_timer_for_sure, memory::gdt, proc::*, wait};
 use alloc::format;
 use x86_64::{structures::idt::{InterruptDescriptorTable, InterruptStackFrame}, PrivilegeLevel};
 
@@ -88,6 +88,11 @@ pub fn dispatcher(context: &mut ProcessContext) {
             };
             context.set_rax(ret as usize);
         },
+        
+        // None -> Time
+        Syscall::Time => {
+            context.set_rax(sys_time());
+        }
 
         // None
         Syscall::Stat => { /* FIXME: list processes */ 

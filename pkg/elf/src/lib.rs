@@ -225,3 +225,29 @@ fn load_segment(
 
     Ok(())
 }
+
+/// Map a range of memory
+///
+/// allocate frames and map to specified address (R/W)
+pub fn unmap_range(
+    addr: u64,
+    count: u64,
+    page_table: &mut impl Mapper<Size4KiB>,
+    frame_deallocator: &mut impl FrameDeallocator<Size4KiB>,
+) -> Result<(), UnmapError> {
+    let range_start = Page::containing_address(VirtAddr::new(addr));
+    let range_end = range_start + count;
+
+    trace!(
+        "Unmap Page Range: {:?}({})",
+        Page::range(range_start, range_end),
+        count
+    );
+    for page in Page::range(range_start, range_end) {
+        let (frame, flush) = page_table.unmap(page)?;
+        flush.flush();
+        unsafe { frame_deallocator.deallocate_frame(frame) };
+    }
+
+    Ok(())
+}

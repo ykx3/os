@@ -6,7 +6,7 @@ use spin::*;
 use x86_64::structures::paging::mapper::MapToError;
 use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::*;
-use elf::map_range;
+use elf::{map_range, unmap_range};
 use alloc::sync::Arc;
 
 #[derive(Clone)]
@@ -102,6 +102,7 @@ impl Process {
         }else{
             PageTableFlags::empty()
         };
+        self.write().set_stack(VirtAddr::new(stack_base), STACK_DEF_PAGE);
         map_range(stack_base, STACK_DEF_PAGE, &mut page_table, frame_allocator, Some(flag));
         VirtAddr::new(stack_base+STACK_DEF_SIZE-8)
     }
@@ -114,10 +115,15 @@ impl Process {
         }else{
             PageTableFlags::empty()
         };
+        self.write().set_stack(stack_bot - PAGE_SIZE * pages, pages);
         let frame_allocator = &mut *get_frame_alloc_for_sure();
         let mut page_table = self.read().page_table.as_ref().unwrap().mapper();
         map_range((stack_bot - PAGE_SIZE * pages).as_u64(), pages, &mut page_table, frame_allocator, Some(flag));
         Ok(())
+    }
+    
+    pub fn set_stack(&mut self, start: VirtAddr, size: u64) {
+        self.write().proc_data.as_mut().unwrap().set_stack(start, size);
     }
 }
 
@@ -180,6 +186,13 @@ impl ProcessInner {
         // FIXME: set status to dead
         self.status = ProgramStatus::Dead;
         // FIXME: take and drop unused resources
+        let frame_deallocator = &mut *get_frame_alloc_for_sure();
+        let mut page_table = self.page_table.as_ref().unwrap().mapper();
+        let sts = self.proc_data.as_ref().unwrap().stack_segment.unwrap();
+        let start_address = sts.start.start_address().as_u64();
+        let end_address = sts.end.start_address().as_u64();
+        let count = (end_address - start_address) / Size4KiB::SIZE;
+        unmap_range(start_address, count, &mut page_table, frame_deallocator);
         drop(self.proc_data.take());
     }
 
@@ -241,12 +254,18 @@ impl core::fmt::Display for Process {
         let inner = self.inner.read();
         write!(
             f,
-            " #{:-3} | #{:-3} | {:12} | {:7} | {:?}",
+            " #{:-3} \t| #{:-3} \t| {:12} \t| {:7} \t| {:?} \t| {:#?}",
             self.pid.0,
             inner.parent().map(|p| p.pid.0).unwrap_or(0),
             inner.name,
             inner.ticks_passed,
-            inner.status
+            inner.status,
+            {
+                let sts = inner.proc_data.as_ref().unwrap().stack_segment.unwrap();
+                let start_address = sts.start.start_address().as_u64();
+                let end_address = sts.end.start_address().as_u64();
+                (end_address - start_address) / Size4KiB::SIZE
+            }
         )?;
         Ok(())
     }

@@ -9,7 +9,7 @@ fn main() -> isize {
     println!("starting shell...");
     shell();
     println!("exiting shell...");
-    233
+    0
 }
 
 fn shell(){
@@ -24,6 +24,7 @@ fn shell(){
             "ps"=>sys_stat(),
             "ls"=>sys_list_app(),
             "run"=>run(&ops[1]),
+            "sleep"=>sleep(ops[1].parse().unwrap_or(0)),
             "help"=>help(),
             "clear"=>print!("\x1B[2J\x1B[1;1H"),
             "exit"=>return (),
@@ -38,6 +39,7 @@ fn help(){
     println!("ps\t\tList all currently running processes.");
     println!("ls\t\tList all available user programs.");
     println!("run <app>\tRun a specified user program. Replace <app> with the name of the program.");
+    println!("sleep <num>\tSleep for num ms.");
     println!("help\t\tDisplay this help message.");
     println!("clear\t\tClear the screen.");
     println!("exit\t\tExit the shell.");
@@ -46,6 +48,16 @@ fn help(){
 fn run(name: &str){
     let ret = sys_wait_pid(sys_spawn(name));
     println!("{} exit with code {}", name, ret);
+}
+
+pub fn sleep(millisecs: u64) {
+    let start = sys_time();
+    println!("start sleep in {}", start);
+    let mut current = start;
+    while current - start < millisecs {
+        current = sys_time();
+    }
+    println!("wake up in {}", current);
 }
 
 entry!(main);

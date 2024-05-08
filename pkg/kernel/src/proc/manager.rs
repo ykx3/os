@@ -203,6 +203,7 @@ impl ProcessManager {
         for app in apps{
             if now.read().name() == &app.name{
                 user_access = true;
+                break;
             }
         }
         if addr < stack_bot && addr > stack_top{
@@ -234,7 +235,7 @@ impl ProcessManager {
     }
 
     pub fn print_process_list(&self) {
-        let mut output = String::from("  PID | PPID | Process Name |  Ticks  | Status\n");
+        let mut output = String::from("  PID \t| PPID \t| Process Name \t|  Ticks  \t| Status \t| Stack Pages\n");
 
         for (_, p) in self.processes.read().iter() {
             if p.read().status() != ProgramStatus::Dead {

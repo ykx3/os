@@ -1,8 +1,8 @@
 use core::alloc::Layout;
 
+use crate::clock::get_timer_for_sure;
 use crate::proc;
 use crate::proc::*;
-use crate::utils::*;
 
 use super::SyscallArgs;
 
@@ -93,4 +93,10 @@ pub fn sys_deallocate(args: &SyscallArgs) {
             .lock()
             .deallocate(core::ptr::NonNull::new_unchecked(ptr), *layout);
     }
+}
+
+pub fn sys_time() -> usize {
+    let timer = get_timer_for_sure();
+    let time = timer.get_time();
+    time.nanosecond() as usize / 10 + time.second() as usize * 100 + time.minute() as usize * 60 * 100 + time.hour() as usize * 360000 + time.day() as usize * 24 * 360000
 }
