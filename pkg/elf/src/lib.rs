@@ -96,7 +96,7 @@ pub fn load_elf(
 ) -> Result<(), MapToError<Size4KiB>> {
     let file_buf = elf.input.as_ptr();
 
-    info!("Loading ELF file... @ {:#x}", file_buf as u64);
+    trace!("Loading ELF file... @ {:#x}", file_buf as u64);
 
     for segment in elf.program_iter() {
         if segment.get_type().unwrap() != program::Type::Load {
@@ -237,7 +237,14 @@ pub fn unmap_range(
 ) -> Result<(), UnmapError> {
     let range_start = Page::containing_address(VirtAddr::new(addr));
     let range_end = range_start + count;
-
+    trace!(
+        "Unmap hint: {:#x} -> {:#x}",
+        addr,
+        page_table
+            .translate_page(range_start)
+            .unwrap()
+            .start_address()
+    );
     trace!(
         "Unmap Page Range: {:?}({})",
         Page::range(range_start, range_end),

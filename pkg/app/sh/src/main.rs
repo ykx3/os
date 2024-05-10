@@ -13,6 +13,7 @@ fn main() -> isize {
 }
 
 fn shell(){
+    print!("\x1B[2J\x1B[1;1H");
     loop {
         print!("shell > ");
         let mut op=stdin().read_line();

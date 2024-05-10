@@ -180,12 +180,7 @@ impl ProcessInner {
         self.parent.as_ref().and_then(|p| p.upgrade())
     }
 
-    pub fn kill(&mut self, ret: isize) {
-        // FIXME: set exit code
-        self.exit_code = Some(ret);
-        // FIXME: set status to dead
-        self.status = ProgramStatus::Dead;
-        // FIXME: take and drop unused resources
+    pub fn free(&mut self){
         let frame_deallocator = &mut *get_frame_alloc_for_sure();
         let mut page_table = self.page_table.as_ref().unwrap().mapper();
         let sts = self.proc_data.as_ref().unwrap().stack_segment.unwrap();
@@ -193,6 +188,15 @@ impl ProcessInner {
         let end_address = sts.end.start_address().as_u64();
         let count = (end_address - start_address) / Size4KiB::SIZE;
         unmap_range(start_address, count, &mut page_table, frame_deallocator);
+    }
+
+    pub fn kill(&mut self, ret: isize) {
+        // FIXME: set exit code
+        self.exit_code = Some(ret);
+        // FIXME: set status to dead
+        self.status = ProgramStatus::Dead;
+        // FIXME: take and drop unused resources
+        self.free();
         drop(self.proc_data.take());
     }
 

@@ -99,7 +99,7 @@ pub fn load_apps(bs: &BootServices) -> AppList {
             Some(entry) => {
                 let file = { /* FIXME: get handle for app binary file */ 
                     let hander = handle.open(entry.file_name(), FileMode::Read, FileAttribute::empty()).unwrap();
-                    info!("Loading {}", entry.file_name());
+                    debug!("Loading {}", entry.file_name());
                     match hander.into_type().expect("Failed to into_type") {
                         FileType::Regular(regular) => Some(regular),
                         _ => None,
