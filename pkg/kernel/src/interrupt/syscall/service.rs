@@ -98,5 +98,5 @@ pub fn sys_deallocate(args: &SyscallArgs) {
 pub fn sys_time() -> usize {
     let timer = get_timer_for_sure();
     let time = timer.get_time();
-    time.nanosecond() as usize / 10 + time.second() as usize * 100 + time.minute() as usize * 60 * 100 + time.hour() as usize * 360000 + time.day() as usize * 24 * 360000
+    time.nanosecond() as usize / 1000 + time.second() as usize * 1000 + time.minute() as usize * 60 * 1000 + time.hour() as usize * 3600000 + time.day() as usize * 24 * 3600000
 }

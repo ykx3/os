@@ -58,7 +58,7 @@ pub fn init(boot_info: &'static boot::BootInfo) {
     let mut kproc_data = ProcessData::new();
 
     // FIXME: set the kernel stack
-    kproc_data.set_stack(VirtAddr::new(KSTACK_INIT_BOT), KSTACK_DEF_SIZE);
+    kproc_data.set_stack(VirtAddr::new(KSTACK_INIT_BOT), KSTACK_DEF_PAGE);
     trace!("Init process data: {:#?}", kproc_data);
 
     // kernel process
