@@ -8,7 +8,6 @@ use core::ptr::{copy_nonoverlapping, write_bytes};
 use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::{mapper::*, *};
 use x86_64::{align_up, PhysAddr, VirtAddr};
-use xmas_elf::program::Flags;
 use xmas_elf::{program, ElfFile};
 
 /// Map physical memory

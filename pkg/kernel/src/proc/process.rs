@@ -3,11 +3,9 @@ use crate::memory::*;
 use alloc::sync::Weak;
 use alloc::vec::Vec;
 use spin::*;
-use x86_64::structures::paging::mapper::MapToError;
-use x86_64::structures::paging::page::PageRange;
-use x86_64::structures::paging::*;
 use elf::{map_range, unmap_range};
 use alloc::sync::Arc;
+use x86_64::structures::paging::{PageSize, PageTableFlags, Size4KiB};
 
 #[derive(Clone)]
 pub struct Process {
@@ -103,7 +101,7 @@ impl Process {
             PageTableFlags::empty()
         };
         self.write().set_stack(VirtAddr::new(stack_base), STACK_DEF_PAGE);
-        map_range(stack_base, STACK_DEF_PAGE, &mut page_table, frame_allocator, Some(flag));
+        let _ = map_range(stack_base, STACK_DEF_PAGE, &mut page_table, frame_allocator, Some(flag));
         VirtAddr::new(stack_base+STACK_DEF_SIZE-8)
     }
 
@@ -118,7 +116,7 @@ impl Process {
         self.write().set_stack(stack_bot - PAGE_SIZE * pages, pages);
         let frame_allocator = &mut *get_frame_alloc_for_sure();
         let mut page_table = self.read().page_table.as_ref().unwrap().mapper();
-        map_range((stack_bot - PAGE_SIZE * pages).as_u64(), pages, &mut page_table, frame_allocator, Some(flag));
+        let _ = map_range((stack_bot - PAGE_SIZE * pages).as_u64(), pages, &mut page_table, frame_allocator, Some(flag));
         Ok(())
     }
     
@@ -187,7 +185,7 @@ impl ProcessInner {
         let start_address = sts.start.start_address().as_u64();
         let end_address = sts.end.start_address().as_u64();
         let count = (end_address - start_address) / Size4KiB::SIZE;
-        unmap_range(start_address, count, &mut page_table, frame_deallocator);
+        let _ = unmap_range(start_address, count, &mut page_table, frame_deallocator);
     }
 
     pub fn kill(&mut self, ret: isize) {

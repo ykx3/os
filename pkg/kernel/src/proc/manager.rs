@@ -1,15 +1,14 @@
-use core::fmt::Debug;
 
 use super::*;
-use crate::memory::{
-    self, allocator::{ALLOCATOR, HEAP_SIZE}, get_frame_alloc_for_sure, user, PAGE_SIZE
-};
+use crate::memory::
+    get_frame_alloc_for_sure
+;
 use alloc::{collections::*, format, sync::Weak};
 use boot::AppListRef;
 use elf::load_elf;
+use manager::processor::set_pid;
 use spin::{Mutex, RwLock};
 use alloc::sync::Arc;
-use x86::task::tr;
 
 pub static PROCESS_MANAGER: spin::Once<ProcessManager> = spin::Once::new();
 
@@ -125,9 +124,9 @@ impl ProcessManager {
 
     pub fn spawn_kernel_thread(
         &self,
-        entry: VirtAddr,
-        name: String,
-        proc_data: Option<ProcessData>,
+        _entry: VirtAddr,
+        _name: String,
+        _proc_data: Option<ProcessData>,
     ) -> ProcessId {
         panic!("bad function!");
         // // info!("spawn");

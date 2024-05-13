@@ -13,9 +13,7 @@ pub fn test() -> ! {
             count = 0;
             print!("\r{:-6} => Tick!\n", id);
         }
-        unsafe {
-            x86_64::instructions::hlt();
-        }
+        x86_64::instructions::hlt();
     }
 }
 

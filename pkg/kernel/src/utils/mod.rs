@@ -11,7 +11,7 @@ pub mod resource;
 pub use macros::*;
 pub use regs::*;
 
-use crate::proc::{self, *};
+use crate::proc::{*};
 use self::manager::get_process_manager;
 use alloc::format;
 pub const fn get_ascii_header() -> &'static str {

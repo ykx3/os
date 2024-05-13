@@ -9,7 +9,7 @@ use apic::*;
 use x86_64::structures::idt::InterruptDescriptorTable;
 use crate::memory::physical_to_virtual;
 use x86::msr::IA32_APIC_BASE;
-use crate::interrupt::consts::{Interrupts, Irq};
+use crate::interrupt::consts::Irq;
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {

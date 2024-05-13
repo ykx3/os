@@ -1,4 +1,4 @@
-use crate::{clock::get_timer_for_sure, memory::gdt, proc::*, wait};
+use crate::{memory::gdt, proc::*};
 use alloc::format;
 use x86_64::{structures::idt::{InterruptDescriptorTable, InterruptStackFrame}, PrivilegeLevel};
 

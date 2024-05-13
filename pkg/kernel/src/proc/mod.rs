@@ -7,7 +7,6 @@ mod process;
 mod processor;
 
 
-use boot::BootInfo;
 use manager::*;
 use process::*;
 use crate::memory::PAGE_SIZE;
@@ -22,7 +21,6 @@ pub use pid::ProcessId;
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::VirtAddr;
 
-use self::processor::{get_pid, set_pid};
 // 0xffff_ff00_0000_0000 is the kernel's address space
 pub const STACK_MAX: u64 = 0x0000_4000_0000_0000;
 

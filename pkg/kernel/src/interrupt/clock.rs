@@ -1,8 +1,7 @@
-use crate::{memory::gdt, proc::print_process_list};
+use crate::memory::gdt;
 use crate::proc;
 use super::consts::*;
 use x86_64::structures::idt::InterruptDescriptorTable;
-use core::sync::atomic::{AtomicU64, Ordering};
 use x86_64::structures::idt::InterruptStackFrame;
 use crate::proc::ProcessContext;
 pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {

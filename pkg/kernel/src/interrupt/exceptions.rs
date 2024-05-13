@@ -2,8 +2,6 @@ use crate::memory::*;
 use crate::proc::manager::get_process_manager;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
-use x86_64::VirtAddr;
-use core::arch::asm;
 
 pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
     idt.divide_error.set_handler_fn(divide_error_handler);
