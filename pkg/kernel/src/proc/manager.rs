@@ -255,4 +255,13 @@ impl ProcessManager {
         self.kill(get_process_manager().current().pid(), ret);
     }
     
+    pub fn fork(&self) {
+        // FIXME: get current process
+        let now = self.current();
+        // FIXME: fork to get child
+        let child = now.fork();
+        // FIXME: add child to process list
+        self.push_ready(child.pid())
+        // FOR DBG: maybe print the process ready queue?
+    }
 }

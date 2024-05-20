@@ -68,6 +68,12 @@ pub fn dispatcher(context: &mut ProcessContext) {
             context.set_rax(ret as usize);
         },
 
+        // None -> pid: u16 or 0 or -1
+        Syscall::Fork => { 
+            // todo
+            panic!("unimpl")
+        },
+
         // path: &str (ptr: arg0 as *const u8, len: arg1) -> pid: u16
         Syscall::Spawn => { /* FIXME: spawn process from name */
             let ret = spawn_process(&args);

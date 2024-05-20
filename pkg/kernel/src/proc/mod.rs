@@ -190,3 +190,14 @@ pub fn still_alive(pid: ProcessId) -> bool {
         get_process_manager().get_proc(&pid).unwrap().read().status() != ProgramStatus::Dead
     })
 }
+
+pub fn fork(context: &mut ProcessContext) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let manager = get_process_manager();
+        // FIXME: save_current as parent
+        // FIXME: fork to get child
+        // FIXME: push to child & parent to ready queue
+        // FIXME: switch to next process
+        manager.fork();
+    })
+}

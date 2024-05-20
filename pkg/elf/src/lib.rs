@@ -257,3 +257,19 @@ pub fn unmap_range(
 
     Ok(())
 }
+
+/// Clone a range of memory
+///
+/// - `src_addr`: the address of the source memory
+/// - `dest_addr`: the address of the target memory
+/// - `size`: the count of pages to be cloned
+pub fn clone_range(src_addr: u64, dest_addr: u64, size: usize) {
+    trace!("Clone range: {:#x} -> {:#x}", src_addr, dest_addr);
+    unsafe {
+        copy_nonoverlapping::<u8>(
+            src_addr as *mut u8,
+            dest_addr as *mut u8,
+            size * Size4KiB::SIZE as usize,
+        );
+    }
+}

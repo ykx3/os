@@ -123,6 +123,28 @@ impl Process {
     pub fn set_stack(&mut self, start: VirtAddr, size: u64) {
         self.write().proc_data.as_mut().unwrap().set_stack(start, size);
     }
+
+    pub fn fork(self: &Arc<Self>) -> Arc<Self> {
+        // FIXME: lock inner as write
+        // FIXME: inner fork with parent weak ref
+        let mut now_inner = self.write();
+        let pid = ProcessId::new();
+        let new_inner = now_inner.fork(Arc::downgrade(self), &pid);
+        // FOR DBG: maybe print the child process info
+        //          e.g. parent, name, pid, etc.
+        // FIXME: make the arc of child
+        // create process struct
+        let child = Arc::new(Self {
+            pid,
+            inner: Arc::new(RwLock::new(new_inner)),
+        });
+        // FIXME: add child to current process's children list
+        now_inner.children.push(child);
+        // FIXME: set fork ret value for parent with `context.set_rax`
+        now_inner.context.set_rax(pid.0 as usize);
+        // FIXME: mark the child as ready & return it
+        child
+    }
 }
 
 impl ProcessInner {
@@ -200,6 +222,40 @@ impl ProcessInner {
 
     pub fn init_stack(&mut self, entry:VirtAddr, top:VirtAddr){
         self.context.init_stack_frame(entry, top);
+    }
+
+    pub fn fork(&mut self, parent: Weak<Process>, pid: &ProcessId) -> ProcessInner {
+        // FIXME: get current process's stack info
+        let stack_info = self.proc_data.as_ref().unwrap().stack_segment.unwrap();
+        let start_addr = stack_info.start.start_address().as_u64();
+        let stack_size = (stack_info.end.start_address().as_u64() - start_addr) / Size4KiB::SIZE;
+        // FIXME: clone the process data struct
+        let cloned_proc_data = self.proc_data.clone().unwrap();
+    
+        // FIXME: clone the page table context (see instructions)
+        let cloned_page_table = self.clone_page_table();
+
+        // FIXME: alloc & map new stack for child (see instructions)
+        // FIXME: copy the *entire stack* from parent to child
+        let stack_base = STACK_MAX - pid.0 as u64 * STACK_MAX_SIZE;
+        let frame_allocator = &mut *get_frame_alloc_for_sure();
+        let mut page_table = cloned_page_table.mapper();
+        let flag = 
+            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE;
+        self.set_stack(VirtAddr::new(stack_base), stack_size);
+        let _ = map_range(stack_base, STACK_DEF_PAGE, &mut page_table, frame_allocator, Some(flag));
+        elf::clone_range(start_addr ,stack_base, stack_size as usize);
+        // FIXME: update child's context with new *stack pointer*
+        //          > update child's stack to new base
+        //          > keep lower bits of *rsp*, update the higher bits
+        //          > also update the stack record in process data
+        let new_context = self.context.clone();
+
+        // FIXME: set the return value 0 for child with `context.set_rax`
+
+        // FIXME: construct the child process inner
+
+        // NOTE: return inner because there's no pid record in inner
     }
 }
 

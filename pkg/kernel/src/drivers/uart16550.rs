@@ -50,15 +50,13 @@ impl SerialPort {
     /// This function is unsafe because the caller must ensure that the given base address
     /// really points to a serial port device.
     pub const fn new(base: u16) -> Self {
-        unsafe {
-            Self {
-            data: Port::new(base),
-            int_en: PortWriteOnly::new(base + 1),
-            fifo_ctrl: PortWriteOnly::new(base + 2),
-            line_ctrl: PortWriteOnly::new(base + 3),
-            modem_ctrl: PortWriteOnly::new(base + 4),
-            line_sts: PortReadOnly::new(base + 5),
-            }
+        Self {
+        data: Port::new(base),
+        int_en: PortWriteOnly::new(base + 1),
+        fifo_ctrl: PortWriteOnly::new(base + 2),
+        line_ctrl: PortWriteOnly::new(base + 3),
+        modem_ctrl: PortWriteOnly::new(base + 4),
+        line_sts: PortReadOnly::new(base + 5),
         }
     }
 
