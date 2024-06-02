@@ -15,6 +15,7 @@ pub mod allocator;
 pub extern crate alloc;
 
 pub mod syscall;
+pub mod sync;
 
 use core::fmt::*;
 

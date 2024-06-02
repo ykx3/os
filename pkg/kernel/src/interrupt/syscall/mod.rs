@@ -70,8 +70,7 @@ pub fn dispatcher(context: &mut ProcessContext) {
 
         // None -> pid: u16 or 0 or -1
         Syscall::Fork => { 
-            // todo
-            panic!("unimpl")
+            sys_fork(context);
         },
 
         // path: &str (ptr: arg0 as *const u8, len: arg1) -> pid: u16
@@ -86,14 +85,18 @@ pub fn dispatcher(context: &mut ProcessContext) {
         // pid: arg0 as u16 -> status: isize
         Syscall::WaitPid => { /* FIXME: check if the process is running or get retcode */
             let pid = ProcessId(args.arg0 as u16);
-            let manager = get_process_manager();
-            let ret = if let Some(ret) = manager.check_proc(&pid) {
-                ret
-            }else{
-                -1
-            };
-            context.set_rax(ret as usize);
+            // let manager = get_process_manager();
+            // let ret = if let Some(ret) = manager.check_proc(&pid) {
+            //     ret
+            // }else{
+            //     -1
+            // };
+            // context.set_rax(ret as usize);
+            wait_pid(pid, context);
         },
+
+        // op: u8, key: u32, val: usize -> ret: any
+        Syscall::Sem => sys_sem(&args, context),
         
         // None -> Time
         Syscall::Time => {

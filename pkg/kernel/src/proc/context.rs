@@ -13,7 +13,7 @@ pub struct ProcessContextValue {
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct ProcessContext {
-    value: ProcessContextValue,
+    pub value: ProcessContextValue,
 }
 
 impl ProcessContext {

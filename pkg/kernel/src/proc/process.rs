@@ -6,6 +6,7 @@ use spin::*;
 use elf::{map_range, unmap_range};
 use alloc::sync::Arc;
 use x86_64::structures::paging::{PageSize, PageTableFlags, Size4KiB};
+use sync::*;
 
 #[derive(Clone)]
 pub struct Process {
@@ -23,6 +24,7 @@ pub struct ProcessInner {
     context: ProcessContext,
     pub(super) page_table: Option<PageTableContext>,
     proc_data: Option<ProcessData>,
+    pub(super) semaphores: Arc<RwLock<SemaphoreSet>>,
 }
 
 impl Process {
@@ -62,6 +64,7 @@ impl Process {
             children: Vec::new(),
             page_table: Some(page_table),
             proc_data: Some(proc_data.unwrap_or_default()),
+            semaphores: Arc::new(SemaphoreSet::default().into())
         };
 
         trace!("New process {}#{} created.", &inner.name, pid);
@@ -129,7 +132,9 @@ impl Process {
         // FIXME: inner fork with parent weak ref
         let mut now_inner = self.write();
         let pid = ProcessId::new();
-        let new_inner = now_inner.fork(Arc::downgrade(self), &pid);
+        let idx = now_inner.children.len();
+        let sem = Arc::clone(&now_inner.semaphores);
+        let new_inner = now_inner.fork(Arc::downgrade(self), &pid, idx, sem);
         // FOR DBG: maybe print the child process info
         //          e.g. parent, name, pid, etc.
         // FIXME: make the arc of child
@@ -139,7 +144,7 @@ impl Process {
             inner: Arc::new(RwLock::new(new_inner)),
         });
         // FIXME: add child to current process's children list
-        now_inner.children.push(child);
+        now_inner.children.push(child.clone());
         // FIXME: set fork ret value for parent with `context.set_rax`
         now_inner.context.set_rax(pid.0 as usize);
         // FIXME: mark the child as ready & return it
@@ -166,6 +171,10 @@ impl ProcessInner {
 
     pub fn resume(&mut self) {
         self.status = ProgramStatus::Running;
+    }
+
+    pub fn block(&mut self) {
+        self.status = ProgramStatus::Blocked;
     }
 
     pub fn exit_code(&self) -> Option<isize> {
@@ -224,16 +233,16 @@ impl ProcessInner {
         self.context.init_stack_frame(entry, top);
     }
 
-    pub fn fork(&mut self, parent: Weak<Process>, pid: &ProcessId) -> ProcessInner {
+    pub fn fork(&mut self, parent: Weak<Process>, pid: &ProcessId, idx: usize, sem: Arc<RwLock<SemaphoreSet>>) -> ProcessInner {
         // FIXME: get current process's stack info
         let stack_info = self.proc_data.as_ref().unwrap().stack_segment.unwrap();
         let start_addr = stack_info.start.start_address().as_u64();
         let stack_size = (stack_info.end.start_address().as_u64() - start_addr) / Size4KiB::SIZE;
         // FIXME: clone the process data struct
-        let cloned_proc_data = self.proc_data.clone().unwrap();
+        let mut cloned_proc_data = self.proc_data.clone().unwrap();
     
         // FIXME: clone the page table context (see instructions)
-        let cloned_page_table = self.clone_page_table();
+        let cloned_page_table = self.page_table.as_ref().unwrap().fork();
 
         // FIXME: alloc & map new stack for child (see instructions)
         // FIXME: copy the *entire stack* from parent to child
@@ -242,20 +251,59 @@ impl ProcessInner {
         let mut page_table = cloned_page_table.mapper();
         let flag = 
             PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE;
-        self.set_stack(VirtAddr::new(stack_base), stack_size);
-        let _ = map_range(stack_base, STACK_DEF_PAGE, &mut page_table, frame_allocator, Some(flag));
+        
+        let _ = map_range(stack_base, stack_size, &mut page_table, frame_allocator, Some(flag));
         elf::clone_range(start_addr ,stack_base, stack_size as usize);
         // FIXME: update child's context with new *stack pointer*
         //          > update child's stack to new base
         //          > keep lower bits of *rsp*, update the higher bits
         //          > also update the stack record in process data
-        let new_context = self.context.clone();
-
+        let mut new_context = ProcessContext::default();
+        let child_rsp = self.context.value.stack_frame.stack_pointer + stack_base - start_addr;
+        new_context.init_stack_frame(self.context.stack_frame.instruction_pointer, child_rsp);
+        cloned_proc_data.set_stack(VirtAddr::new(stack_base), stack_size);
         // FIXME: set the return value 0 for child with `context.set_rax`
-
+        // debug!("111");
+        new_context.set_rax(0);
+        let c_name = alloc::format!("{}#{}", self.name.as_str(), idx);
         // FIXME: construct the child process inner
-
         // NOTE: return inner because there's no pid record in inner
+        Self { name: c_name,
+            parent: Some(parent), 
+            children: Vec::new(), 
+            ticks_passed: 0, 
+            status: ProgramStatus::Ready, 
+            exit_code: None, 
+            context: new_context, 
+            page_table: Some(cloned_page_table), 
+            proc_data: Some(cloned_proc_data),
+            semaphores: sem
+           }
+    }
+
+    #[inline]
+    pub fn set_rax(&mut self, value: usize) {
+        self.context.set_rax(value)
+    }
+
+    #[inline]
+    pub fn sem_new(&self, key: u32, value: usize) -> bool {
+        self.semaphores.write().insert(key, value)
+    }
+
+    #[inline]
+    pub fn sem_remove(&self, key: u32) -> bool {
+        self.semaphores.write().remove(key)
+    }
+
+    #[inline]
+    pub fn sem_signal(&self, key: u32) -> SemaphoreResult {
+        self.semaphores.write().signal(key)
+    }
+
+    #[inline]
+    pub fn sem_wait(&self, key: u32, pid: ProcessId) -> SemaphoreResult {
+        self.semaphores.write().wait(key, pid)
     }
 }
 

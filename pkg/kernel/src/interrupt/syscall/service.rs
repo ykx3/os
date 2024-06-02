@@ -54,7 +54,7 @@ pub fn sys_read(args: &SyscallArgs) -> usize {
 pub fn exit_process(args: &SyscallArgs, context: &mut ProcessContext) {
     // FIXME: exit process with retcode
     let ret = args.arg0 as isize;
-    exit(ret, context)
+    exit(ret, context);
 }
 
 pub fn list_process() {
@@ -99,4 +99,18 @@ pub fn sys_time() -> usize {
     let timer = get_timer_for_sure();
     let time = timer.get_time();
     time.nanosecond() as usize / 1000 + time.second() as usize * 1000 + time.minute() as usize * 60 * 1000 + time.hour() as usize * 3600000 + time.day() as usize * 24 * 3600000
+}
+
+pub fn sys_fork(context: &mut ProcessContext){
+    fork(context);
+}
+
+pub fn sys_sem(args: &SyscallArgs, context: &mut ProcessContext) {
+    match args.arg0 {
+        0 => context.set_rax(new_sem(args.arg1 as u32, args.arg2)),
+        1 => context.set_rax(remove_sem(args.arg1 as u32)),
+        2 => sem_signal(args.arg1 as u32, context),
+        3 => sem_wait(args.arg1 as u32, context),
+        _ => context.set_rax(usize::MAX),
+    }
 }
