@@ -21,3 +21,4 @@ volatile = "0.5"
 elf = { package = "ysos_elf", path = "../elf" }
 syscall_def = { package = "ysos_syscall", path = "../syscall" }
 xmas-elf = "0.9"
+storage = { package = "ysos_storage", path = "../storage" }

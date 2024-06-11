@@ -37,10 +37,14 @@ where
         let buffer = block.as_ref();
 
         for i in 0..4 {
-            partitions.push(
-                // FIXME: parse the mbr partition from the buffer
-                //      - just ignore other fields for mbr
-            );
+            // FIXME: parse the mbr partition from the buffer
+            //      - just ignore other fields for mbr
+            let offset = 446 + i * 16;
+            let partition_data: [u8; 16] = buffer[offset..offset + 16]
+                .try_into()
+                .expect("slice with incorrect length");
+            let partition = MbrPartition::parse(&partition_data);
+            partitions.push(partition);
 
             if partitions[i].is_active() {
                 trace!("Partition {}: {:#?}", i, partitions[i]);

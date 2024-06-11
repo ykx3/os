@@ -1,4 +1,4 @@
-use crate::{memory::gdt, proc::*};
+use crate::{filesystem::ls, memory::gdt, proc::*};
 use alloc::format;
 use x86_64::{structures::idt::{InterruptDescriptorTable, InterruptStackFrame}, PrivilegeLevel};
 
@@ -111,6 +111,28 @@ pub fn dispatcher(context: &mut ProcessContext) {
         Syscall::ListApp => { /* FIXME: list available apps */
             list_app();
         },
+
+        // path: &str (arg0 as *const u8, arg1 as len)
+        Syscall::ListDir => {
+            let ptr = args.arg0 as *const u8;
+            let len = args.arg1 as usize;
+            unsafe{
+                let buf = core::slice::from_raw_parts(ptr, len);
+                let path = core::str::from_utf8_unchecked(&buf);
+                ls(path);
+            }
+        }
+
+        // path: &str (arg0 as *const u8, arg1 as len)
+        Syscall::Cat => {
+            let ptr = args.arg0 as *const u8;
+            let len = args.arg1 as usize;
+            unsafe{
+                let buf = core::slice::from_raw_parts(ptr, len);
+                let path = core::str::from_utf8_unchecked(&buf);
+                crate::filesystem::cat(path);
+            }
+        }
 
         // ----------------------------------------------------
         // NOTE: following syscall examples are implemented

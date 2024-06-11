@@ -3,7 +3,9 @@ resolver = "2"
 members = [
     "pkg/elf",
     "pkg/boot",
-    "pkg/kernel"
+    "pkg/kernel",
+    "pkg/syscall",
+    "pkg/storage"
 ]
 exclude = ["pkg/app/config", "pkg/app/.cargo"]
 

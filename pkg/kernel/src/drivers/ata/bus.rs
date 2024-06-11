@@ -141,6 +141,11 @@ impl AtaBus {
             //      - read the documentation for more information
             //      - enable LBA28 mode by setting the drive register
             // FIXME: write the command register (cmd as u8)
+            self.lba_low.write(bytes[0]);
+            self.lba_mid.write(bytes[1]);
+            self.lba_high.write(bytes[2]);
+            self.drive.write(0xE0 | (drive << 4) | ((bytes[3] & 0x0F) << 4));
+            self.command.write(cmd as u8);
         }
 
         if self.status().is_empty() {
@@ -149,6 +154,7 @@ impl AtaBus {
         }
 
         // FIXME: poll for the status to be not BUSY
+        self.poll(AtaStatus::BUSY, false);
 
         if self.is_error() {
             warn!("ATA error: {:?} command error", cmd);
@@ -157,6 +163,8 @@ impl AtaBus {
         }
 
         // FIXME: poll for the status to be not BUSY and DATA_REQUEST_READY
+        self.poll(AtaStatus::BUSY, false);
+        self.poll(AtaStatus::DATA_REQUEST_READY, true);
 
         Ok(())
     }
@@ -171,8 +179,10 @@ impl AtaBus {
         //      - call `write_command` with `drive` and `0` as the block number
         //      - if the status is empty, return `AtaDeviceType::None`
         //      - else return `DeviceError::Unknown` as `FsError`
+        self.write_command(drive, 0, AtaCommand::IdentifyDevice)?;
 
         // FIXME: poll for the status to be not BUSY
+        self.poll(AtaStatus::BUSY, false);
 
         Ok(match (self.cylinder_low(), self.cylinder_high()) {
             // we only support PATA drives
@@ -201,6 +211,11 @@ impl AtaBus {
         //      - use `buf.chunks_mut(2)`
         //      - use `self.read_data()`
         //      - ! pay attention to data endianness
+        for chunk in buf.chunks_mut(2) {
+            let data = self.read_data();
+            chunk[0] = data as u8;
+            chunk[1] = (data >> 8) as u8;
+        }
 
         if self.is_error() {
             debug!("ATA error: data read error");
@@ -222,6 +237,10 @@ impl AtaBus {
         //      - use `buf.chunks(2)`
         //      - use `self.write_data()`
         //      - ! pay attention to data endianness
+        for chunk in buf.chunks(2) {
+            let data = u16::from(chunk[0]) | (u16::from(chunk[1]) << 8);
+            self.write_data(data);
+        }
 
         if self.is_error() {
             debug!("ATA error: data write error");

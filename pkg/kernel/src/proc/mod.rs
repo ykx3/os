@@ -7,9 +7,12 @@ mod process;
 mod processor;
 mod sync;
 
+use alloc::string::ToString;
 use manager::*;
 use process::*;
+use storage::FileSystem;
 use sync::*;
+use crate::filesystem::get_rootfs;
 use crate::memory::PAGE_SIZE;
 
 use xmas_elf::ElfFile;
@@ -89,13 +92,25 @@ pub fn spawn_kernel_thread(entry: fn() -> !, name: String, data: Option<ProcessD
     })
 }
 
-pub fn spawn(name: &str) -> Option<ProcessId> {
-    let app = x86_64::instructions::interrupts::without_interrupts(|| {
-        let app_list = get_process_manager().app_list()?;
-        app_list.iter().find(|&app| app.name.eq(name))
-    })?;
+pub fn spawn(path: &str) -> Option<ProcessId> {
+    let parts: Vec<&str> = path.split('/').collect();
+    let name = parts.last().unwrap();
 
-    elf_spawn(name.into(), &app.elf)
+    let fs = get_rootfs();
+    let f = fs.open_file(path);
+
+    let mut buf = Vec::new(); 
+    let elf = match f {
+        Ok(mut file) => {
+            let _ = file.read_all(&mut buf);
+            xmas_elf::ElfFile::new(&buf)
+        },
+        Err(_) => {
+            Err("Error opening file")
+        }, 
+    }.unwrap();
+
+    elf_spawn(name.to_string(), &elf)
 }
 
 pub fn elf_spawn(name: String, elf: &ElfFile) -> Option<ProcessId> {
@@ -146,24 +161,14 @@ pub fn handle_page_fault(addr: VirtAddr, err_code: PageFaultErrorCode) -> bool {
 }
 
 pub fn list_app() {
-    x86_64::instructions::interrupts::without_interrupts(|| {
-        let app_list = get_process_manager().app_list();
-        if app_list.is_none() {
-            println!("[!] No app found in list!");
-            return;
-        }
-
-        let apps = app_list
-            .unwrap()
-            .iter()
-            .map(|app| app.name.as_str())
-            .collect::<Vec<&str>>()
-            .join(", ");
-
-        // TODO: print more information like size, entry point, etc.
-
-        println!("[+] App list: {}", apps);
-    });
+    let fs = get_rootfs();
+    let iter = fs.read_dir("/app");
+    let apps = iter.unwrap()
+        .filter(|meta| meta.is_file())
+        .map(|meta| meta.name.clone())  
+        .collect::<Vec<String>>()       
+        .join(", "); 
+    println!("[+] App list: {}", apps);
 }
 
 pub fn read(fd: u8, mut buf: &mut [u8]) -> isize {

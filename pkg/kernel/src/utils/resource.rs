@@ -1,5 +1,6 @@
 use alloc::{collections::BTreeMap, string::String};
 use spin::Mutex;
+use storage::FileHandle;
 
 use crate::input::try_pop_key;
 
@@ -60,6 +61,7 @@ impl ResourceSet {
 #[derive(Debug)]
 pub enum Resource {
     Console(StdIO),
+    File(FileHandle),
     Null,
 }
 
@@ -82,6 +84,12 @@ impl Resource {
                 }
                 _ => None,
             },
+            Resource::File(f) => {
+                match f.read(buf) {
+                    Ok(ret) => Some(ret),
+                    _ => None
+                }
+            },
             Resource::Null => Some(0),
         }
     }
@@ -99,6 +107,7 @@ impl Resource {
                     Some(buf.len())
                 }
             },
+            Resource::File(_) => Some(0),
             Resource::Null => Some(buf.len()),
         }
     }

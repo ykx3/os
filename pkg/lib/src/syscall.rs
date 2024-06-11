@@ -110,3 +110,13 @@ pub fn sys_wait(key: u32) -> bool {
 pub fn sys_remove(key: u32) -> bool {
     syscall!(Syscall::Sem, 1, key as usize) == 0
 }
+
+#[inline(always)]
+pub fn sys_list_dir(path: &str) {
+    syscall!(Syscall::ListDir, path.as_ptr() as u64, path.len() as u64);
+}
+
+#[inline(always)]
+pub fn sys_cat(path: &str) {
+    syscall!(Syscall::Cat, path.as_ptr() as u64, path.len() as u64);
+}

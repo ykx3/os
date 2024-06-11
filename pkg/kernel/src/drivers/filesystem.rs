@@ -1,6 +1,9 @@
 use super::ata::*;
 use alloc::boxed::Box;
-use chrono::DateTime;
+use alloc::format;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+// use chrono::DateTime;
 use storage::fat16::Fat16;
 use storage::mbr::*;
 use storage::*;
@@ -33,6 +36,7 @@ pub fn init() {
 }
 
 pub fn ls(root_path: &str) {
+    println!("{:12} {:12} {:20}", "Name", "Size", "Last Modified");
     let iter = match get_rootfs().read_dir(root_path) {
         Ok(iter) => iter,
         Err(err) => {
@@ -47,4 +51,40 @@ pub fn ls(root_path: &str) {
     //      - add '/' to the end of directory names
     //      - format the date as you like
     //      - do not forget to print the table header
+    for meta in iter {
+        let name = if meta.entry_type == FileType::Directory {
+            format!("{}/", meta.name)
+        } else {
+            meta.name
+        };
+
+        let size = crate::humanized_size(meta.len.try_into().unwrap());
+        let size = format!("{:.2} {}", size.0, size.1);
+
+        let modified = meta.modified.map_or(String::from("Unknown"), |datetime| {
+            datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+        });
+
+        println!("{:12} {:12} {:20}", name, size, modified);
+    }
+}
+
+pub fn cat(path: &str) {
+    let fs = get_rootfs();
+    let f = fs.open_file(path);
+
+    match f {
+        Ok(mut file) => {
+            let mut buf = Vec::new(); 
+            
+            let _ = file.read_all(&mut buf);
+
+            // 将读取到的数据（字节）转换为字符串
+            match String::from_utf8(buf) {
+                Ok(str) => print!("{}", str),   
+                Err(e) => println!("Error converting to UTF-8: {:?}", e), 
+            }
+        },
+        Err(e) => println!("Error opening file: {:?}", e), // 无法打开文件
+    }
 }

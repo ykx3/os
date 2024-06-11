@@ -46,6 +46,7 @@ pub fn init(boot_info: &'static BootInfo) {
     x86_64::instructions::interrupts::enable();
     info!("Interrupts Enabled.");
     clock::init(boot_info);
+    filesystem::init();
     
     info!("YatSenOS initialized.");
 }

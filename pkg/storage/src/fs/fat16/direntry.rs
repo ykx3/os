@@ -48,6 +48,17 @@ impl DirEntry {
             String::from("unknown")
         }
     }
+    pub fn is_valid(&self) -> bool {
+        self.filename.name[0] != 0xE5 && self.filename.name[0] != 0x00
+    }
+
+    pub fn is_long_name(&self) -> bool {
+        self.attributes == Attributes::LFN
+    }
+
+    pub fn is_directory(&self) -> bool {
+        self.attributes.contains(Attributes::DIRECTORY)
+    }
 
     /// For Standard 8.3 format
     ///
@@ -58,6 +69,12 @@ impl DirEntry {
         // FIXME: parse the rest of the fields
         //      - ensure you can pass the test
         //      - you may need `prase_datetime` function
+        let attributes = Attributes::from_bits_truncate(data[11]);
+        let created_time = parse_datetime(u16::from_le_bytes([data[14], data[15]]), u16::from_le_bytes([data[16], data[17]]));
+        let accessed_time = parse_datetime(0, u16::from_le_bytes([data[18], data[19]]));
+        let modified_time = parse_datetime(u16::from_le_bytes([data[22], data[23]]), u16::from_le_bytes([data[24], data[25]]));
+        let cluster = u16::from_le_bytes([data[26], data[27]]) as u32 | (u16::from_le_bytes([data[20], data[21]]) as u32) << 16;
+        let size = u32::from_le_bytes([data[28], data[29], data[30], data[31]]);
 
         Ok(DirEntry {
             filename,
@@ -75,8 +92,14 @@ impl DirEntry {
     }
 }
 
-fn prase_datetime(time: u32) -> FsTime {
-    // FIXME: parse the year, month, day, hour, min, sec from time
+fn parse_datetime(time_bits: u16, date_bits: u16)  -> FsTime {
+    let year = ((date_bits >> 9) & 0x7F) as i32 + 1980; // 7位年份，加上1980年
+    let month = ((date_bits >> 5) & 0x0F) as u32; // 4位月份
+    let day = (date_bits & 0x1F) as u32; // 5位日期
+
+    let hour = ((time_bits >> 11) & 0x1F) as u32; // 5位小时
+    let min = ((time_bits >> 5) & 0x3F) as u32; // 6位分钟
+    let sec = (time_bits & 0x1F) as u32 * 2; // 5位双秒，需要乘2
 
     if let Single(time) = Utc.with_ymd_and_hms(year, month, day, hour, min, sec) {
         time
@@ -100,11 +123,19 @@ impl ShortFileName {
     }
 
     pub fn basename(&self) -> &str {
-        core::str::from_utf8(&self.name).unwrap()
+        if let Ok(ret) = core::str::from_utf8(&self.name) {
+            ret
+        } else {
+            "empty"
+        }        
     }
 
     pub fn extension(&self) -> &str {
-        core::str::from_utf8(&self.ext).unwrap()
+        if let Ok(ret) = core::str::from_utf8(&self.ext) {
+            ret
+        } else {
+            "ept"
+        }     
     }
 
     pub fn is_eod(&self) -> bool {
@@ -119,6 +150,10 @@ impl ShortFileName {
         self.name == sfn.name && self.ext == sfn.ext
     }
 
+    fn is_valid_fat_char(ch: char) -> bool {
+        !ch.is_control() && !matches!(ch, ' ' | '"' | '*' | '+' | ',' | '/' | ':' | ';' | '<' | '=' | '>' | '?' | '[' | '\\' | ']' | '|')
+    }
+
     /// Parse a short file name from a string
     pub fn parse(name: &str) -> Result<ShortFileName> {
         // FIXME: implement the parse function
@@ -127,13 +162,49 @@ impl ShortFileName {
         //
         //      - use 0x20 ' ' for right padding
         //      - check if the filename is empty
+        if name.is_empty() {
+            return Err(FsError::FileNameError(FilenameError::FilenameEmpty));
+        }
         //      - check if the name & ext are too long
         //      - period `.` means the start of the file extension
+        let parts: Vec<&str> = name.split('.').collect();
+        if parts.len() > 2 {
+            return Err(FsError::FileNameError(FilenameError::UnableToParse));
+        }
+        if parts[0].len() > 8 || (parts.len() > 1 && parts[1].len() > 3) {
+            return Err(FsError::FileNameError(FilenameError::NameTooLong));
+        }
         //      - check if the period is misplaced (after 8 characters)
+        if parts[0].len() > 8 {
+            return Err(FsError::FileNameError(FilenameError::MisplacedPeriod));
+        }
         //      - check if the filename contains invalid characters:
         //        [0x00..=0x1F, 0x20, 0x22, 0x2A, 0x2B, 0x2C, 0x2F, 0x3A,
         //        0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x5B, 0x5C, 0x5D, 0x7C]
+        if name.chars().any(|ch| !Self::is_valid_fat_char(ch)) {
+            return Err(FsError::FileNameError(FilenameError::InvalidCharacter));
+        }
+
+        let mut sfn = ShortFileName {
+            name: [0x20; 8], 
+            ext:  [0x20; 3], 
+        };
+
+        // 将文件名转换为大写并填充到sfn.name中
+        for (i, &byte) in parts[0].as_bytes().iter().enumerate() {
+            sfn.name[i] = byte.to_ascii_uppercase();
+        }
+
+        // 同样处理文件扩展名
+        if parts.len() == 2 {
+            for (i, &byte) in parts[1].as_bytes().iter().enumerate() {
+                sfn.ext[i] = byte.to_ascii_uppercase();
+            }
+        }
+
+        Ok(sfn)
     }
+    
 }
 
 impl Debug for ShortFileName {
