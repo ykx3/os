@@ -21,6 +21,13 @@ fn shell(){
         //提示词
         print!("\x1b[32;1mykx@YSOS\x1b[0m:\x1b[34;1m{}\x1b[0m$ ",path);
         let op=stdin().read_line();
+        if let Err(key) = op {
+            match key {
+                (_, '\x04') => break,
+                _ => continue,
+            }
+        }
+        let op = op.unwrap();
         let ops:Vec<_>=op.split_whitespace().collect();
         if ops.is_empty() {
             continue;

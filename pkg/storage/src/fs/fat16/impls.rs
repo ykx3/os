@@ -74,46 +74,19 @@ impl Fat16Impl {
     }
 
     // 基于目录项名称查找 DirEntry
-    fn find_entry_by_name(&self, dir: Option<&Directory>, name: &str) -> Result<DirEntry> {
-        let mut cluster = if let Some(dir) = dir {
-            dir.cluster
-        } else {
-            Cluster::ROOT_DIR
-        };
+    fn find_entry_by_name(&self, dir: &Directory, name: &str) -> Result<DirEntry> {
+        let mut entries = Vec::new();
 
-        loop {
-            let sector = self.cluster_to_sector(&cluster);
-            let mut sector_data = Block::new(&[0u8; BLOCK_SIZE]);
-
-            // 读取整个扇区
-            for entry_offset in (0..BLOCK_SIZE).step_by(DirEntry::LEN) {
-                self.inner.read_block(sector, &mut sector_data)?;
-
-                let entry = &sector_data[entry_offset..entry_offset + DirEntry::LEN];
-                // 结束此目录的读取，如果我们遇到了0x00，代表此后不再有有效条目
-                if entry[0] == 0x00 {
-                    break;
-                }
-                
-                // 如果目录项被删除了，跳过
-                if entry[0] == 0xE5 {
-                    continue;
-                }
-
-                let current_entry = DirEntry::parse(entry)?;
-                if current_entry.is_valid() && current_entry.filename() == name {
-                    return Ok(current_entry);
-                }
+        self.iterate_dir(&dir, |entry| {
+            if entry.filename() == name {
+                entries.push(entry.clone());
             }
+        })?;
 
-            // 检查是否到达了簇链的末尾
-            cluster = match self.read_next_cluster(cluster) {
-                Ok(next_cluster) if next_cluster != Cluster::END_OF_FILE => next_cluster,
-                _ => break,
-            };
+        match entries.pop() {
+            Some(entry) => Ok(entry),
+            _ => Err(FsError::FileNotFound)
         }
-
-        Err(FsError::FileNotFound)
     }
 
     pub fn find_entry(&self, path: &str) -> Result<DirEntry> {
@@ -125,18 +98,18 @@ impl Fat16Impl {
             .collect();
         
         // 开始于根目录 None 表示根目录
-        let mut current_dir: Option<Directory> = None;
+        let mut current_dir = Directory::root();
 
         for part in parts.iter() {
             // 在当前目录中查找名为 part 的条目
-            match self.find_entry_by_name(current_dir.as_ref(), part) {
+            match self.find_entry_by_name(&current_dir, part) {
                 Ok(entry) => {
                     if part == parts.last().unwrap() {
                         // 如果这是路径的最后一部分，返回这个目录项
                         return Ok(entry);
                     } else if entry.attributes.contains(Attributes::DIRECTORY) {
                         // 如果找到的是目录，更新 current_dir 以供下一轮查找
-                        current_dir = Some(Directory::from_entry(entry));
+                        current_dir = Directory::from_entry(entry);
                     }  else {
                         // 路径中非最后部分的条目不是目录
                         return Err(FsError::NotADirectory);
@@ -150,47 +123,62 @@ impl Fat16Impl {
         Err(FsError::FileNotFound)
     }
 
-    // 遍历目录，并返回一个包含所有文件元数据的向量
-    fn read_dir(&self, dir: Option<&Directory>) -> Result<Vec<Metadata>> {
-        let mut cluster = if let Some(dir) = dir {
-            dir.cluster
-        } else {
-            Cluster::ROOT_DIR
-        };
-        let mut entries = Vec::new();
-
-        loop {
-            let sector = self.cluster_to_sector(&cluster);
-            let mut sector_data = Block::new(&[0u8; BLOCK_SIZE]);
-
-            // 读取整个扇区
-            for entry_offset in (0..BLOCK_SIZE).step_by(DirEntry::LEN) {
-                self.inner.read_block(sector, &mut sector_data)?;
-
-                let entry = &sector_data[entry_offset..entry_offset + DirEntry::LEN];
-                // 结束此目录的读取，如果我们遇到了0x00，代表此后不再有有效条目
-                if entry[0] == 0x00 {
-                    break;
-                }
-                
-                // 如果目录项被删除了，跳过
-                if entry[0] == 0xE5 {
-                    continue;
-                }
-
-                let current_entry = DirEntry::parse(entry)?;
-                if current_entry.is_valid() && !current_entry.filename().contains("unknow") {
-                    entries.push((&current_entry).into());
-                }
-            }
-
-            // 检查是否到达了簇链的末尾
-            cluster = match self.read_next_cluster(cluster) {
-                Ok(next_cluster) if next_cluster != Cluster::END_OF_FILE => next_cluster,
-                _ => break,
-            };
+    pub fn iterate_dir<F>(&self, dir: &directory::Directory, mut func: F) -> Result<()>
+    where
+        F: FnMut(&DirEntry),
+    {
+        if let Some(entry) = &dir.entry {
+            trace!("Iterating directory: {}", entry.filename());
         }
 
+        let mut current_cluster = Some(dir.cluster);
+        let mut dir_sector_num = self.cluster_to_sector(&dir.cluster);
+        let dir_size = match dir.cluster {
+            Cluster::ROOT_DIR => self.first_data_sector - self.first_root_dir_sector,
+            _ => self.bpb.sectors_per_cluster() as usize,
+        };
+        trace!("Directory size: {}", dir_size);
+
+        let mut block = Block::default();
+        let block_size = Block512::size();
+        while let Some(cluster) = current_cluster {
+            for sector in dir_sector_num..dir_sector_num + dir_size {
+                self.inner.read_block(sector, &mut block).unwrap();
+                for entry in 0..block_size / DirEntry::LEN {
+                    let start = entry * DirEntry::LEN;
+                    let end = (entry + 1) * DirEntry::LEN;
+
+                    let dir_entry = DirEntry::parse(&block[start..end])?;
+
+                    if dir_entry.filename.is_eod() {
+                        return Ok(());
+                    } else if dir_entry.is_valid() && !dir_entry.is_long_name() {
+                        func(&dir_entry);
+                    }
+                }
+            }
+            current_cluster = if cluster != Cluster::ROOT_DIR {
+                match self.read_next_cluster(cluster) {
+                    Ok(n) => {
+                        dir_sector_num = self.cluster_to_sector(&n);
+                        Some(n)
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        Ok(())
+    }
+
+    fn read_dir(&self, dir: &Directory) -> Result<Vec<Metadata>> {
+        let mut entries = Vec::new();
+
+        self.iterate_dir(&dir, |entry| {
+            entries.push(entry.as_meta());
+        })?;
+        
         Ok(entries)
     }
 }
@@ -199,11 +187,11 @@ impl FileSystem for Fat16 {
     fn read_dir(&self, path: &str) -> Result<Box<dyn Iterator<Item = Metadata> + Send>> {
         // FIXME: read dir and return an iterator for all entries
         let entries = if path.is_empty() {
-            self.handle.read_dir(None)?
+            self.handle.read_dir(&Directory::root())?
         } else {
             let entry = self.handle.find_entry(path)?;
             let dir = Directory::from_entry(entry);
-            self.handle.read_dir(Some(&dir))?
+            self.handle.read_dir(&dir)?
         };
         let iter = entries.into_iter();
         Ok(Box::new(iter))

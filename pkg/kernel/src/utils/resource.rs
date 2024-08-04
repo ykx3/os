@@ -74,7 +74,7 @@ impl Resource {
                     let mut i = 0;
                     for value in buf.iter_mut() {
                         if let Some(key) = try_pop_key() {
-                            *value = key as u8;
+                            *value = key;
                             i += 1;
                         }else {
                             break;
